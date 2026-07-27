@@ -210,14 +210,15 @@ async function fetchAll() {
     if (debugEl) {
       const rows = parseCSV(inputCSV).slice(0,20);
       const tgtRows = parseCSV(targetsCSV).slice(0,20);
-      const dashRows = parseCSV(dashCSV).slice(0,50);
+      const dashRows = parseCSV(dashCSV).slice(0,70);
       debugEl.innerHTML =
         "<b>── INPUT tab ──</b><br>" +
         rows.map((r,i)=>`<div><b>Row${i+1}:</b> ${r.map((c,ci)=>`[${ci}]=${JSON.stringify(c)}`).join(" | ")}</div>`).join("") +
         "<br><b>── TARGETS tab ──</b><br>" +
         tgtRows.map((r,i)=>`<div><b>Row${i+1}:</b> ${r.map((c,ci)=>`[${ci}]=${JSON.stringify(c)}`).join(" | ")}</div>`).join("") +
         "<br><b>── DASHBOARD tab ──</b><br>" +
-        dashRows.map((r,i)=>`<div><b>Row${i+1}:</b> ${r.map((c,ci)=>`[${ci}]=${JSON.stringify(c)}`).join(" | ")}</div>`).join("");
+        dashRows.map((r,i)=>`<div><b>Row${i+1}:</b> ${r.map((c,ci)=>`[${ci}]=${JSON.stringify(c)}`).join(" | ")}</div>`).join("") +
+        `<br><b>── NOTES PARSED ──</b><br>WINS: ${JSON.stringify(DATA.noteWins)}<br>RISKS: ${JSON.stringify(DATA.noteRisks)}<br>HELP: ${JSON.stringify(DATA.noteHelp)}`;
     }
 
     DATA = parseData(inp, tgt, dash);
