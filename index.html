@@ -189,7 +189,16 @@ async function fetchAll() {
     const [inputCSV, targetsCSV, dashCSV] = await Promise.all([
       fetch(sheetURL("Input"), {cache: "no-store"}).then(r => { if(!r.ok) throw new Error("Input tab fetch failed"); return r.text(); }),
       fetch(sheetURL("Targets"), {cache: "no-store"}).then(r => { if(!r.ok) throw new Error("Targets tab fetch failed"); return r.text(); }),
-      fetch(sheetURL("Dashboard"), {cache: "no-store"}).then(r => r.ok ? r.text() : ""),
+      // Try multiple possible tab name spellings
+      (async () => {
+        for (const name of ["Dashboard","dashboard","DASHBOARD","Sheet1","Sheet3"]) {
+          try {
+            const r = await fetch(sheetURL(name), {cache: "no-store"});
+            if (r.ok) { const t = await r.text(); if (t && t.length > 10) return t; }
+          } catch(e) {}
+        }
+        return "";
+      })(),
     ]);
 
     const inp = parseCSV(inputCSV);
