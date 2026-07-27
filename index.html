@@ -427,20 +427,28 @@ function parseData(inp, tgt, dash) {
   // then content rows below each column
   let noteWins = "", noteRisks = "", noteHelp = "";
   if (dash && dash.length) {
-    // Step 1: find the row with WINS / RISKS / LEADERSHIP headers
+    // Step 1: find the row with WINS / RISKS headers
+    // Note: gviz collapses merged cells — LEADERSHIP header may show as blank
     let winsCol = -1, risksCol = -1, helpCol = -1, hdrRow = -1;
     for (let i = 0; i < dash.length; i++) {
       let foundAny = false;
       for (let c = 0; c < dash[i].length; c++) {
         const v = clean(dash[i][c]).toLowerCase();
-        if (v.includes("wins"))                            { winsCol  = c; foundAny = true; }
-        if (v.includes("risk"))                            { risksCol = c; foundAny = true; }
+        if (v.includes("wins"))                             { winsCol  = c; foundAny = true; }
+        if (v.includes("risk"))                             { risksCol = c; foundAny = true; }
         if (v.includes("leadership") || v.includes("help")) { helpCol  = c; foundAny = true; }
       }
-      if (foundAny && (winsCol >= 0 || risksCol >= 0 || helpCol >= 0)) { hdrRow = i; break; }
+      if (foundAny && (winsCol >= 0 || risksCol >= 0)) { hdrRow = i; break; }
     }
 
-    // Step 2: read content rows below the header (up to 10 rows, skip empty, stop at blank streak)
+    // If helpCol not found (merged cell collapsed by gviz), infer it from spacing
+    // WINS=col1, RISKS=col4 → gap=3 → LEADERSHIP=col7
+    if (hdrRow >= 0 && helpCol < 0 && winsCol >= 0 && risksCol >= 0) {
+      const gap = risksCol - winsCol;
+      helpCol = risksCol + gap;
+    }
+
+    // Step 2: read content rows below the header
     if (hdrRow >= 0) {
       for (let r = hdrRow + 1; r < dash.length && r < hdrRow + 15; r++) {
         if (winsCol  >= 0) { const t = clean(dash[r][winsCol]);  if (t) noteWins  += (noteWins  ? "\n" : "") + t; }
