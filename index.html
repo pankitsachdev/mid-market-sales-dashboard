@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mid-Market Sales Dashboard</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Calibri, Arial, sans-serif; background: #F7F8FA; color: #111827; font-size: 13px; }
+  .page { max-width: 1300px; margin: 0 auto; padding: 16px; }
+
+  .title-bar { background: #1B2B4B; color: #fff; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; height: 52px; border-radius: 6px 6px 0 0; gap: 8px; }
+  .title-bar h1 { font-size: 15px; font-weight: 700; letter-spacing: .5px; }
+  .title-right { display: flex; align-items: center; gap: 10px; }
+  .subtitle { font-size: 11px; color: #8FA3C8; font-style: italic; }
+  .refresh-btn { background: #3B5BDB; color: #fff; border: none; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .refresh-btn:hover { background: #2D4170; }
+  .refresh-btn:disabled { background: #6B7280; cursor: default; }
+
+  /* Loading / error */
+  .status-bar { background: #EEF2FF; border: 1px solid #C7D2FE; border-radius: 6px; padding: 10px 14px; margin: 12px 0; font-size: 12px; color: #2D4170; display: flex; align-items: center; gap: 8px; }
+  .status-bar.err { background: #FEE2E2; border-color: #FECACA; color: #991B1B; }
+  .status-bar.ok  { background: #D1FAE5; border-color: #6EE7B7; color: #057A55; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #C7D2FE; border-top-color: #3B5BDB; border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .tabs { display: flex; gap: 2px; background: #e5e7eb; padding: 6px 0 0; border-bottom: 2px solid #1B2B4B; }
+  .tab { padding: 7px 20px; cursor: pointer; font-size: 12px; font-weight: 600; border-radius: 4px 4px 0 0; color: #4B5563; background: #e5e7eb; border: none; }
+  .tab.active { background: #fff; color: #1B2B4B; border-bottom: 2px solid #fff; margin-bottom: -2px; }
+  .tab-content { display: none; padding: 16px 0; }
+  .tab-content.active { display: block; }
+  .sec-hdr { background: #1B2B4B; color: #fff; font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 4px 4px 0 0; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 16px; }
+  .kpi-card { background: #fff; border-radius: 6px; padding: 14px 16px 10px; border-top: 4px solid #3B5BDB; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .kpi-label { font-size: 9px; font-weight: 700; color: #4B5563; letter-spacing: .6px; text-transform: uppercase; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
+  .kpi-value { font-size: 26px; font-weight: 700; color: #111827; line-height: 1.1; }
+  .kpi-sub { display: flex; gap: 16px; margin-top: 6px; font-size: 10px; }
+  .kpi-sub .exp { color: #3B5BDB; font-weight: 700; }
+  .kpi-sub .tgt { color: #6B7280; }
+  .tl { font-size: 20px; line-height: 1; }
+  .gc { color: #057A55; } .ac { color: #92400E; } .rc { color: #991B1B; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .full-col { margin-bottom: 16px; }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; }
+  th { background: #F3F4F6; color: #4B5563; font-size: 10px; font-weight: 700; text-align: center; padding: 5px 8px; border-bottom: 1px solid #E5E7EB; }
+  th.l { text-align: left; }
+  td { font-size: 11px; padding: 5px 8px; border-bottom: 1px solid #F3F4F6; text-align: center; vertical-align: middle; }
+  td.l { text-align: left; }
+  tr:nth-child(even) td { background: #F9FAFB; }
+  tr.tot td { background: #1B2B4B !important; color: #fff !important; font-weight: 700; }
+  .vp { color: #057A55; background: #D1FAE5 !important; font-weight: 600; }
+  .vn { color: #991B1B; background: #FEE2E2 !important; font-weight: 600; }
+  .r-total { background: #1B2B4B !important; color: #fff !important; font-weight: 700; }
+  .r-mm  { background: #1B2B4B !important; color: #fff !important; }
+  .r-ent { background: #2D4170 !important; color: #fff !important; }
+  .r-high { background: #D1FAE5 !important; }
+  .r-str  { background: #F3F4F6 !important; }
+  .r-tgt  { background: #EEF2FF !important; }
+  .r-fnl-c { background: #D1FAE5 !important; color: #057A55 !important; font-weight: 700; }
+  .ch { color: #057A55; font-weight: 600; } .cs { color: #92400E; } .ccl { color: #9CA3AF; font-style: italic; }
+
+  .notes-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; margin-bottom: 16px; }
+  .notes-hdr { font-size:10px; font-weight:700; padding:7px 10px; }
+  .nh-w { background:#D1FAE5; color:#057A55; } .nh-r { background:#FEF3C7; color:#92400E; } .nh-h { background:#FEE2E2; color:#991B1B; }
+  .notes-body { background:#fff; border:1px solid #E5E7EB; border-top:none; min-height:60px; padding:8px; font-size:11px; color:#374151; }
+
+  /* Last updated */
+  .last-updated { font-size:10px; color:#9CA3AF; text-align:right; padding: 6px 0 0; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="title-bar">
+    <h1>MID-MARKET SALES DASHBOARD</h1>
+    <div class="title-right">
+      <span class="subtitle" id="ttl-date"></span>
+      <button class="refresh-btn" id="refresh-btn" onclick="fetchAll()">↻ Refresh</button>
+    </div>
+  </div>
+
+  <div id="status-bar" class="status-bar">
+    <span class="spinner"></span> Loading data from Google Sheets...
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="sw('dashboard',this)">📊 Dashboard</button>
+    <button class="tab" onclick="sw('raw',this)">📋 Raw Data</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="tab-dashboard" class="tab-content active">
+    <div class="kpi-grid" style="margin-top:12px;">
+      <div class="kpi-card"><div class="kpi-label">MEETINGS <span class="tl" id="tl0">●</span></div><div class="kpi-value" id="kv0">–</div><div class="kpi-sub"><span class="exp">Exp: <span id="ke0">–</span></span><span class="tgt">Target: <span id="kt0">–</span></span></div></div>
+      <div class="kpi-card"><div class="kpi-label">SQLs <span class="tl" id="tl1">●</span></div><div class="kpi-value" id="kv1">–</div><div class="kpi-sub"><span class="exp">Exp: <span id="ke1">–</span></span><span class="tgt">Target: <span id="kt1">–</span></span></div></div>
+      <div class="kpi-card"><div class="kpi-label">MRR CLOSED <span class="tl" id="tl2">●</span></div><div class="kpi-value" id="kv2">–</div><div class="kpi-sub"><span class="exp">Exp: <span id="ke2">–</span></span><span class="tgt">Target: <span id="kt2">–</span></span></div></div>
+      <div class="kpi-card"><div class="kpi-label">COMMIT (HIGH CONF) <span class="tl" id="tl3">●</span></div><div class="kpi-value" id="kv3">–</div><div class="kpi-sub"><span class="exp">Exp: <span id="ke3">–</span></span><span class="tgt">Target: <span id="kt3">–</span></span></div></div>
+    </div>
+    <div class="two-col">
+      <div><div class="sec-hdr">MEETINGS BY SOURCE</div><table><thead><tr><th class="l">Source</th><th>Actual</th><th>Expected</th><th>Variance</th></tr></thead><tbody id="tb-mtg"></tbody></table></div>
+      <div><div class="sec-hdr">SQLs BY SOURCE</div><table><thead><tr><th class="l">Source</th><th>Actual</th><th>Expected</th><th>Variance</th></tr></thead><tbody id="tb-sql"></tbody></table></div>
+    </div>
+    <div class="two-col">
+      <div><div class="sec-hdr">MRR &amp; REVENUE</div><table><thead><tr><th class="l">Metric</th><th>Value (₹)</th></tr></thead><tbody id="tb-mrr"></tbody></table></div>
+      <div><div class="sec-hdr">DEAL FUNNEL</div><table><thead><tr><th class="l">Stage</th><th># Deals</th></tr></thead><tbody id="tb-fnl"></tbody></table><div style="font-size:9px;color:#9CA3AF;font-style:italic;text-align:center;padding:6px;">Enterprise closes at Agreement Signed · MM closes at Onboarding</div></div>
+    </div>
+    <div class="full-col">
+      <div class="sec-hdr">TOP DEALS IN COMMIT &nbsp;<span style="background:#EEF2FF;color:#2D4170;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;">High conf first, sorted by MRR</span></div>
+      <table><thead><tr><th class="l">Account</th><th>Owner</th><th>MRR (₹)</th><th>Stage</th><th>Confidence</th><th class="l">Blocker</th></tr></thead><tbody id="tb-top"></tbody></table>
+    </div>
+    <div class="sec-hdr" style="border-radius:4px 4px 0 0;">NOTES FOR TODAY</div>
+    <div class="notes-grid">
+      <div><div class="notes-hdr nh-w">🏆 WINS</div><div class="notes-body" id="n-wins"></div></div>
+      <div><div class="notes-hdr nh-r">⚠️ RISKS</div><div class="notes-body" id="n-risks"></div></div>
+      <div><div class="notes-hdr nh-h">🙋 LEADERSHIP HELP NEEDED</div><div class="notes-body" id="n-help"></div></div>
+    </div>
+    <div class="last-updated" id="last-updated"></div>
+  </div>
+
+  <!-- RAW DATA -->
+  <div id="tab-raw" class="tab-content">
+    <p style="font-size:11px;color:#4B5563;margin:10px 0 14px;">This is the raw data fetched from your Google Sheet. Update numbers there and click <strong>↻ Refresh</strong>.</p>
+    <div class="sec-hdr">COMMIT TRACKER (from Input tab)</div>
+    <div style="overflow-x:auto;">
+      <table><thead><tr><th class="l">Account</th><th>Owner</th><th>MRR (₹)</th><th>Business</th><th>Stage</th><th>Confidence</th><th>Close Date</th><th class="l">Blocker</th></tr></thead>
+      <tbody id="tb-raw"></tbody></table>
+    </div>
+    <div class="sec-hdr" style="margin-top:16px;">DEBUG — Raw Input CSV (first 20 rows)</div>
+    <div style="overflow-x:auto;background:#fff;border:1px solid #e5e7eb;padding:8px;font-size:10px;font-family:monospace;" id="debug-csv"></div>
+  </div>
+
+</div>
+
+<script>
+const SHEET_ID = "1Ft-ODwDjVURXrt5C2U7zzoApRLgmOC7u2M7oFQDNDrk";
+const STGS = ["Commercial Discussion","Agreement Sent","Agreement Signed","Invoice Raised","Handed to Onboarding"];
+
+// Fetch a sheet tab as CSV using the gviz endpoint (works for public sheets)
+// Cache-bust with timestamp so every fetch gets fresh data from Google Sheets
+function sheetURL(tabName) {
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}&cachebust=${Date.now()}`;
+}
+
+// Simple CSV parser (handles quoted fields)
+function parseCSV(text) {
+  const rows = [];
+  const lines = text.split(/\r?\n/);
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const cols = [];
+    let cur = "", inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { inQ = !inQ; }
+      else if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ""; }
+      else { cur += ch; }
+    }
+    cols.push(cur.trim());
+    rows.push(cols);
+  }
+  return rows;
+}
+
+function n(v) { const x = parseFloat((v||"").replace(/[₹,\s]/g,"")); return isNaN(x) ? 0 : x; }
+const INR = v => "₹" + Number(v).toLocaleString("en-IN");
+const NUM = v => Number(v).toLocaleString("en-IN");
+function tl(a, e) {
+  if (a >= e) return {s:"●", c:"gc"};
+  if (a >= e * 0.8) return {s:"◑", c:"ac"};
+  return {s:"●", c:"rc"};
+}
+
+let DATA = null;
+
+async function fetchAll() {
+  const btn = document.getElementById("refresh-btn");
+  const bar = document.getElementById("status-bar");
+  btn.disabled = true;
+  btn.textContent = "↻ Loading...";
+  bar.className = "status-bar";
+  bar.innerHTML = '<span class="spinner"></span> Fetching from Google Sheets...';
+
+  try {
+    const [inputCSV, targetsCSV] = await Promise.all([
+      fetch(sheetURL("Input"), {cache: "no-store"}).then(r => { if(!r.ok) throw new Error("Input tab fetch failed"); return r.text(); }),
+      fetch(sheetURL("Targets"), {cache: "no-store"}).then(r => { if(!r.ok) throw new Error("Targets tab fetch failed"); return r.text(); }),
+    ]);
+
+    const inp = parseCSV(inputCSV);
+    const tgt = parseCSV(targetsCSV);
+
+    // Show debug
+    const debugEl = document.getElementById("debug-csv");
+    if (debugEl) {
+      const rows = parseCSV(inputCSV).slice(0,20);
+      const tgtRows = parseCSV(targetsCSV).slice(0,20);
+      debugEl.innerHTML =
+        "<b>── INPUT tab ──</b><br>" +
+        rows.map((r,i)=>`<div><b>Row${i+1}:</b> ${r.map((c,ci)=>`[${ci}]=${JSON.stringify(c)}`).join(" | ")}</div>`).join("") +
+        "<br><b>── TARGETS tab ──</b><br>" +
+        tgtRows.map((r,i)=>`<div><b>Row${i+1}:</b> ${r.map((c,ci)=>`[${ci}]=${JSON.stringify(c)}`).join(" | ")}</div>`).join("");
+    }
+
+    DATA = parseData(inp, tgt);
+    render(DATA);
+
+    const now = new Date().toLocaleTimeString("en-IN", {hour:"2-digit", minute:"2-digit"});
+    document.getElementById("last-updated").textContent = `Last updated: ${now}`;
+    bar.className = "status-bar ok";
+    bar.innerHTML = `✓ Data loaded successfully from Google Sheets`;
+    setTimeout(() => bar.style.display = "none", 3000);
+
+  } catch(e) {
+    console.error(e);
+    bar.className = "status-bar err";
+    bar.innerHTML = `⚠️ Could not fetch data. Make sure the sheet is set to <strong>"Anyone with the link can view"</strong>. Error: ${e.message}`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = "↻ Refresh";
+}
+
+function clean(v) { return (v||"").replace(/^"|"$/g,"").trim(); }
+
+function findRow(rows, colText) {
+  // find first row where ANY column matches text (case-insensitive, partial)
+  const t = colText.toLowerCase();
+  for (let i = 0; i < rows.length; i++) {
+    for (let c = 0; c < rows[i].length; c++) {
+      if (clean(rows[i][c]).toLowerCase().includes(t)) return {row:i, col:c};
+    }
+  }
+  return null;
+}
+
+function parseData(inp, tgt) {
+  // ── Targets tab ──
+  // Find "Days in Month" header row, data is next row
+  let wdHdrInfo = findRow(tgt, "days in month");
+  const wdRow = wdHdrInfo ? (tgt[wdHdrInfo.row+1] || []) : [];
+  const wdCol = wdHdrInfo ? wdHdrInfo.col : 0;
+  const wdTotal   = n(wdRow[wdCol])   || 31;
+  const wdElapsed = n(wdRow[wdCol+1]) || 0;
+  const month     = clean(wdRow[wdCol+2]) || "–";
+  const ratio = wdTotal > 0 ? wdElapsed / wdTotal : 0;
+
+  // Find overall targets: look for "Total Meetings" header OR a row with 4 consecutive numbers
+  // that look like meetings/sqls/mrr/commit (meetings is typically 50-200, mrr > 10000)
+  let tgtMtg=0, tgtSql=0, tgtMrr=0, tgtCmt=0;
+  let tgtHdrInfo = findRow(tgt, "total meetings");
+  if (tgtHdrInfo) {
+    const tgtRow = tgt[tgtHdrInfo.row+1] || [];
+    const tgtCol = tgtHdrInfo.col;
+    tgtMtg = n(tgtRow[tgtCol]);
+    tgtSql = n(tgtRow[tgtCol+1]);
+    tgtMrr = n(tgtRow[tgtCol+2]);
+    tgtCmt = n(tgtRow[tgtCol+3]);
+  }
+  // Fallback: find "Total Meetings" header even if merged — look for row containing "meetings" + numeric row below
+  if (!tgtMtg) {
+    for (let i = 0; i < tgt.length-1; i++) {
+      const r = tgt[i];
+      for (let c = 0; c < r.length; c++) {
+        if (clean(r[c]).toLowerCase().includes("meetings") && clean(r[c+1]||"").toLowerCase().includes("sql")) {
+          const nxt = tgt[i+1] || [];
+          const v0 = n(nxt[c]), v1 = n(nxt[c+1]), v2 = n(nxt[c+2]), v3 = n(nxt[c+3]);
+          if (v0 > 0) { tgtMtg=v0; tgtSql=v1; tgtMrr=v2; tgtCmt=v3; break; }
+        }
+      }
+      if (tgtMtg) break;
+    }
+  }
+  // Second fallback: search for a row that has a number in range 50-500 (meetings) followed by sqls
+  if (!tgtMtg) {
+    for (let i = 0; i < tgt.length; i++) {
+      const r = tgt[i];
+      for (let c = 0; c < r.length; c++) {
+        const v = n(r[c]);
+        if (v >= 50 && v <= 500 && n(r[c+1]) > 0 && n(r[c+2]) > 10000) {
+          tgtMtg=v; tgtSql=n(r[c+1]); tgtMrr=n(r[c+2]); tgtCmt=n(r[c+3])||tgtMrr; break;
+        }
+      }
+      if (tgtMtg) break;
+    }
+  }
+
+  // Find per-source targets: search for row where col[0] === "Inbound" (first source name)
+  // This is robust against merged-cell headers in gviz output
+  const srcNames = [], srcMtg = [], srcSql = [];
+  const KNOWN_SOURCES = ["Inbound","Outbound","Referral","Partnership","AE Outreach","Martech Partnership"];
+  let srcTgtStart = -1, srcTgtCol = -1, srcMtgCol = -1, srcSqlCol = -1;
+
+  // Find the row where "Inbound" appears — that's the first data row
+  for (let i = 0; i < tgt.length; i++) {
+    for (let c = 0; c < tgt[i].length; c++) {
+      if (clean(tgt[i][c]).toLowerCase() === "inbound") {
+        srcTgtStart = i;
+        srcTgtCol   = c;
+        // Look at the header row above to figure out meeting/sql column positions
+        const hdr = tgt[i-1] || [];
+        srcMtgCol = -1; srcSqlCol = -1;
+        for (let hc = c+1; hc < hdr.length; hc++) {
+          const h = clean(hdr[hc]).toLowerCase();
+          if (srcMtgCol < 0 && (h.includes("meeting") || h === "mtg" || h === "count")) srcMtgCol = hc;
+          else if (srcMtgCol >= 0 && srcSqlCol < 0 && (h.includes("sql") || h.includes("qual") || h === "count")) srcSqlCol = hc;
+        }
+        // Fallback: assume meetings = col+1, sqls = col+2
+        if (srcMtgCol < 0) srcMtgCol = c + 1;
+        if (srcSqlCol < 0) srcSqlCol = c + 2;
+        break;
+      }
+    }
+    if (srcTgtStart >= 0) break;
+  }
+
+  if (srcTgtStart >= 0) {
+    for (let i = srcTgtStart; i < tgt.length; i++) {
+      const r = tgt[i];
+      const nm = clean(r[srcTgtCol]);
+      if (!nm || nm.toUpperCase() === "TOTAL") break;
+      if (STGS.includes(nm) || ["High","Stretch","Mid Market","Enterprise"].includes(nm)) break;
+      srcNames.push(nm);
+      srcMtg.push(n(r[srcMtgCol]));
+      srcSql.push(n(r[srcSqlCol]));
+    }
+  }
+
+  // ── Input tab ──
+  // From debug: Row1 is merged header, Row2-7 are source data (col0=name, col1=mtg, col3=name, col4=sql)
+  // Row8 is TOTAL. Find start by looking for first row where col[1] is "Count" OR
+  // where col[0] is a non-empty non-header name followed by a numeric col[1].
+  // Most robust: find the row just before TOTAL that has source data.
+  // Strategy: find "TOTAL" row in col[0], then read backwards until blank or header.
+
+  // Find header row: row where col[1].toLowerCase()==="count"
+  let mtgHdr = -1;
+  for (let i = 0; i < inp.length; i++) {
+    const r = inp[i];
+    // col[1]=Count and col[4]=Count signals the meetings+sqls header
+    if (clean(r[1]).toLowerCase() === "count" && clean(r[4]).toLowerCase() === "count") {
+      mtgHdr = i; break;
+    }
+    // Also detect merged header: col[0] ends with "Source" and col[1]="Count"
+    if (clean(r[1]).toLowerCase() === "count" && clean(r[0]).toLowerCase().includes("source")) {
+      mtgHdr = i; break;
+    }
+  }
+  // If not found by count, find by TOTAL row and work back
+  if (mtgHdr < 0) {
+    for (let i = 0; i < inp.length; i++) {
+      if (clean(inp[i][0]).toUpperCase() === "TOTAL" && n(inp[i][1]) > 0) {
+        mtgHdr = i - 7; // 6 sources above total
+        if (mtgHdr < 0) mtgHdr = 0;
+        break;
+      }
+    }
+  }
+
+  const meetings = [], sqls = [], sources = [];
+  if (mtgHdr >= 0) {
+    for (let i = mtgHdr+1; i < inp.length; i++) {
+      const r = inp[i];
+      const nm = clean(r[0]);
+      if (!nm) break;
+      if (nm.toUpperCase() === "TOTAL") break;
+      if (nm.toLowerCase().includes("commit tracker")) break;
+      if (nm.toLowerCase() === "account") break;
+      sources.push(nm);
+      meetings.push(n(r[1]));
+      sqls.push(n(r[4]));   // SQLs are always col[4] based on debug
+    }
+  }
+
+  // Commit tracker: find "Account" header row
+  let cmtStart = -1;
+  for (let i = 0; i < inp.length; i++) {
+    const r = inp[i];
+    if (clean(r[0]).toLowerCase() === "account" && clean(r[1]).toLowerCase() === "owner") {
+      cmtStart = i + 1; break;
+    }
+  }
+
+  const commits = [];
+  if (cmtStart >= 0) {
+    for (let i = cmtStart; i < inp.length; i++) {
+      const r = inp[i];
+      const acct = clean(r[0]);
+      if (!acct) continue;
+      // skip if looks like a header repeat
+      if (acct.toLowerCase() === "account") continue;
+      commits.push({
+        a:  acct,
+        o:  clean(r[1]),
+        m:  n(r[2]),
+        b:  clean(r[3]),
+        s:  clean(r[4]),
+        c:  clean(r[5]),
+        d:  clean(r[6]),
+        bl: clean(r[7]),
+        nt: clean(r[8]),
+      });
+    }
+  }
+
+  return { wdTotal, wdElapsed, month, ratio, tgtMtg, tgtSql, tgtMrr, tgtCmt,
+           srcNames: srcNames.length ? srcNames : sources,
+           srcMtg, srcSql, sources, meetings, sqls, commits };
+}
+
+function render(D) {
+  const {ratio, wdTotal, wdElapsed, month, tgtMtg, tgtSql, tgtMrr, tgtCmt,
+         srcNames, srcMtg, srcSql, meetings, sqls, commits} = D;
+
+  document.getElementById("ttl-date").textContent =
+    `${month}  |  Day ${wdElapsed} of ${wdTotal} working days`;
+
+  // KPIs
+  const totalMtg = meetings.reduce((s,v)=>s+v, 0);
+  const totalSql = sqls.reduce((s,v)=>s+v, 0);
+  const entS = ["Agreement Signed","Invoice Raised","Handed to Onboarding"];
+  let mrrMM=0, mrrENT=0, commitH=0, commitS=0;
+  const funnel = {}; for(const s of STGS) funnel[s]=0;
+
+  for(const d of commits) {
+    if(d.s && funnel[d.s]!==undefined) funnel[d.s]++;
+    if(d.b==="Mid Market" && d.s==="Handed to Onboarding") mrrMM += d.m;
+    if(d.b==="Enterprise" && entS.includes(d.s)) mrrENT += d.m;
+    if(d.c==="High") commitH += d.m;
+    if(d.c==="Stretch") commitS += d.m;
+  }
+  const mrrClosed = mrrMM + mrrENT;
+
+  const kpis = [
+    {val:totalMtg, exp:Math.round(tgtMtg*ratio), tgt:tgtMtg, money:false},
+    {val:totalSql,  exp:Math.round(tgtSql*ratio),  tgt:tgtSql,  money:false},
+    {val:mrrClosed, exp:Math.round(tgtMrr*ratio),  tgt:tgtMrr,  money:true},
+    {val:commitH,   exp:Math.round(tgtCmt*ratio),  tgt:tgtCmt,  money:true},
+  ];
+  kpis.forEach((k,i)=>{
+    document.getElementById(`kv${i}`).textContent = k.money ? INR(k.val) : NUM(k.val);
+    document.getElementById(`ke${i}`).textContent = k.money ? INR(k.exp) : NUM(k.exp);
+    document.getElementById(`kt${i}`).textContent = k.money ? INR(k.tgt) : NUM(k.tgt);
+    const {s,c} = tl(k.val, k.exp);
+    const el = document.getElementById(`tl${i}`); el.textContent=s; el.className=`tl ${c}`;
+  });
+
+  // Source rows — use srcNames if available, else meetings-derived sources
+  const displaySrcs = srcNames.length === meetings.length ? srcNames : D.sources;
+  let mH="",sH="",mTA=0,mTE=0,sTA=0,sTE=0;
+  displaySrcs.forEach((src,i)=>{
+    const mA=meetings[i]||0, mE=Math.round((srcMtg[i]||0)*ratio);
+    const sA=sqls[i]||0,     sE=Math.round((srcSql[i]||0)*ratio);
+    const mV=mA-mE, sV=sA-sE;
+    mH+=`<tr><td class="l">${src}</td><td>${mA}</td><td>${mE}</td><td class="${mV>=0?"vp":"vn"}">${mV>=0?"+":""}${mV}</td></tr>`;
+    sH+=`<tr><td class="l">${src}</td><td>${sA}</td><td>${sE}</td><td class="${sV>=0?"vp":"vn"}">${sV>=0?"+":""}${sV}</td></tr>`;
+    mTA+=mA; mTE+=mE; sTA+=sA; sTE+=sE;
+  });
+  mH+=`<tr class="tot"><td class="l">TOTAL</td><td>${mTA}</td><td>${Math.round(mTE)}</td><td>${mTA-Math.round(mTE)>=0?"+":""}${mTA-Math.round(mTE)}</td></tr>`;
+  sH+=`<tr class="tot"><td class="l">TOTAL</td><td>${sTA}</td><td>${Math.round(sTE)}</td><td>${sTA-Math.round(sTE)>=0?"+":""}${sTA-Math.round(sTE)}</td></tr>`;
+  document.getElementById("tb-mtg").innerHTML=mH;
+  document.getElementById("tb-sql").innerHTML=sH;
+
+  // MRR
+  document.getElementById("tb-mrr").innerHTML=`
+    <tr><td class="l r-total" colspan="2"><strong>MRR Closed MTD</strong></td><td class="r-total" style="font-weight:700;font-size:13px;">${INR(mrrClosed)}</td></tr>
+    <tr><td class="l r-mm" colspan="2"><strong>Mid-Market Closed MTD</strong></td><td class="r-mm" style="font-weight:700;">${INR(mrrMM)}</td></tr>
+    <tr><td class="l r-ent" colspan="2"><strong>Enterprise Closed MTD</strong></td><td class="r-ent" style="font-weight:700;">${INR(mrrENT)}</td></tr>
+    <tr><td class="l r-high" colspan="2">High Confidence</td><td class="r-high" style="font-weight:700;">${INR(commitH)}</td></tr>
+    <tr><td class="l r-str" colspan="2">Stretch</td><td class="r-str" style="font-weight:700;">${INR(commitS)}</td></tr>
+    <tr><td class="l r-tgt" colspan="2">Monthly MRR Target</td><td class="r-tgt" style="font-weight:700;">${INR(tgtMrr)}</td></tr>`;
+
+  // Funnel
+  document.getElementById("tb-fnl").innerHTML=STGS.map(s=>{
+    const cl = s==="Handed to Onboarding";
+    return `<tr><td class="l ${cl?"r-fnl-c":""}">${s}${cl?" ✓":""}</td><td class="${cl?"r-fnl-c":""}">${funnel[s]||0}</td></tr>`;
+  }).join("");
+
+  // Top deals
+  const topH = commits.filter(d=>d.c==="High"&&d.a).sort((a,b)=>b.m-a.m);
+  const topS = commits.filter(d=>d.c==="Stretch"&&d.a).sort((a,b)=>b.m-a.m);
+  const top = [...topH, ...topS];
+  document.getElementById("tb-top").innerHTML = top.length ? top.map((d,i)=>{
+    const cc = d.c==="High"?"ch":d.c==="Stretch"?"cs":"ccl";
+    return `<tr style="${i%2?"background:#F9FAFB":""}">
+      <td class="l">${d.a}</td><td>${d.o}</td>
+      <td style="font-weight:600;">${INR(d.m)}</td>
+      <td>${d.s}</td><td class="${cc}">${d.c}</td>
+      <td class="l" style="color:#6B7280;font-size:10px;">${d.bl||""}</td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="6" style="color:#9CA3AF;padding:10px;">No active commit deals</td></tr>`;
+
+  // Raw table
+  document.getElementById("tb-raw").innerHTML = commits.map((d,i)=>`
+    <tr style="${i%2?"background:#F9FAFB":""}">
+      <td class="l">${d.a}</td><td>${d.o}</td><td>${INR(d.m)}</td>
+      <td>${d.b}</td><td>${d.s}</td>
+      <td class="${d.c==="High"?"ch":d.c==="Stretch"?"cs":"ccl"}">${d.c}</td>
+      <td>${d.d}</td><td class="l" style="font-size:10px;color:#6B7280;">${d.bl||""}</td>
+    </tr>`).join("");
+}
+
+function sw(name,btn){
+  document.querySelectorAll(".tab-content").forEach(e=>e.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(e=>e.classList.remove("active"));
+  document.getElementById("tab-"+name).classList.add("active");
+  btn.classList.add("active");
+}
+
+// Auto-fetch on load
+fetchAll();
+</script>
+</body>
+</html>
