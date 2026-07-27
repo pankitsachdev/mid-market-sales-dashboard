@@ -210,7 +210,7 @@ async function fetchAll() {
     if (debugEl) {
       const rows = parseCSV(inputCSV).slice(0,20);
       const tgtRows = parseCSV(targetsCSV).slice(0,20);
-      const dashRows = parseCSV(dashCSV).slice(0,30);
+      const dashRows = parseCSV(dashCSV).slice(0,50);
       debugEl.innerHTML =
         "<b>── INPUT tab ──</b><br>" +
         rows.map((r,i)=>`<div><b>Row${i+1}:</b> ${r.map((c,ci)=>`[${ci}]=${JSON.stringify(c)}`).join(" | ")}</div>`).join("") +
@@ -422,37 +422,29 @@ function parseData(inp, tgt, dash) {
   }
 
   // ── Dashboard tab — Notes ──
-  // Find WINS, RISKS, LEADERSHIP HELP NEEDED cells and read the text below them
+  // Structure: "NOTES FOR TODAY" header row, then a row with WINS | RISKS | LEADERSHIP columns,
+  // then content rows below each column
   let noteWins = "", noteRisks = "", noteHelp = "";
   if (dash && dash.length) {
+    // Step 1: find the row with WINS / RISKS / LEADERSHIP headers
+    let winsCol = -1, risksCol = -1, helpCol = -1, hdrRow = -1;
     for (let i = 0; i < dash.length; i++) {
+      let foundAny = false;
       for (let c = 0; c < dash[i].length; c++) {
         const v = clean(dash[i][c]).toLowerCase();
-        if (v.includes("wins")) {
-          // Collect text from same col in following rows until blank or next section
-          for (let r = i+1; r < dash.length && r < i+10; r++) {
-            const t = clean(dash[r][c]);
-            if (!t) break;
-            if (["risks","leadership","help needed"].some(k => t.toLowerCase().includes(k))) break;
-            noteWins += (noteWins ? "\n" : "") + t;
-          }
-        }
-        if (v.includes("risks")) {
-          for (let r = i+1; r < dash.length && r < i+10; r++) {
-            const t = clean(dash[r][c]);
-            if (!t) break;
-            if (["wins","leadership","help needed"].some(k => t.toLowerCase().includes(k))) break;
-            noteRisks += (noteRisks ? "\n" : "") + t;
-          }
-        }
-        if (v.includes("leadership") || v.includes("help needed")) {
-          for (let r = i+1; r < dash.length && r < i+10; r++) {
-            const t = clean(dash[r][c]);
-            if (!t) break;
-            if (["wins","risks"].some(k => t.toLowerCase().includes(k))) break;
-            noteHelp += (noteHelp ? "\n" : "") + t;
-          }
-        }
+        if (v.includes("wins"))                            { winsCol  = c; foundAny = true; }
+        if (v.includes("risk"))                            { risksCol = c; foundAny = true; }
+        if (v.includes("leadership") || v.includes("help")) { helpCol  = c; foundAny = true; }
+      }
+      if (foundAny && (winsCol >= 0 || risksCol >= 0 || helpCol >= 0)) { hdrRow = i; break; }
+    }
+
+    // Step 2: read content rows below the header (up to 10 rows, skip empty, stop at blank streak)
+    if (hdrRow >= 0) {
+      for (let r = hdrRow + 1; r < dash.length && r < hdrRow + 15; r++) {
+        if (winsCol  >= 0) { const t = clean(dash[r][winsCol]);  if (t) noteWins  += (noteWins  ? "\n" : "") + t; }
+        if (risksCol >= 0) { const t = clean(dash[r][risksCol]); if (t) noteRisks += (noteRisks ? "\n" : "") + t; }
+        if (helpCol  >= 0) { const t = clean(dash[r][helpCol]);  if (t) noteHelp  += (noteHelp  ? "\n" : "") + t; }
       }
     }
   }
