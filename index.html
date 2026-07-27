@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -185,13 +186,15 @@ async function fetchAll() {
   bar.innerHTML = '<span class="spinner"></span> Fetching from Google Sheets...';
 
   try {
-    const [inputCSV, targetsCSV] = await Promise.all([
+    const [inputCSV, targetsCSV, dashCSV] = await Promise.all([
       fetch(sheetURL("Input"), {cache: "no-store"}).then(r => { if(!r.ok) throw new Error("Input tab fetch failed"); return r.text(); }),
       fetch(sheetURL("Targets"), {cache: "no-store"}).then(r => { if(!r.ok) throw new Error("Targets tab fetch failed"); return r.text(); }),
+      fetch(sheetURL("Dashboard"), {cache: "no-store"}).then(r => r.ok ? r.text() : ""),
     ]);
 
     const inp = parseCSV(inputCSV);
     const tgt = parseCSV(targetsCSV);
+    const dash = parseCSV(dashCSV);
 
     // Show debug
     const debugEl = document.getElementById("debug-csv");
@@ -205,7 +208,7 @@ async function fetchAll() {
         tgtRows.map((r,i)=>`<div><b>Row${i+1}:</b> ${r.map((c,ci)=>`[${ci}]=${JSON.stringify(c)}`).join(" | ")}</div>`).join("");
     }
 
-    DATA = parseData(inp, tgt);
+    DATA = parseData(inp, tgt, dash);
     render(DATA);
 
     const now = new Date().toLocaleTimeString("en-IN", {hour:"2-digit", minute:"2-digit"});
@@ -237,7 +240,7 @@ function findRow(rows, colText) {
   return null;
 }
 
-function parseData(inp, tgt) {
+function parseData(inp, tgt, dash) {
   // ── Targets tab ──
   // Find "Days in Month" header row, data is next row
   let wdHdrInfo = findRow(tgt, "days in month");
@@ -406,14 +409,52 @@ function parseData(inp, tgt) {
     }
   }
 
+  // ── Dashboard tab — Notes ──
+  // Find WINS, RISKS, LEADERSHIP HELP NEEDED cells and read the text below them
+  let noteWins = "", noteRisks = "", noteHelp = "";
+  if (dash && dash.length) {
+    for (let i = 0; i < dash.length; i++) {
+      for (let c = 0; c < dash[i].length; c++) {
+        const v = clean(dash[i][c]).toLowerCase();
+        if (v.includes("wins")) {
+          // Collect text from same col in following rows until blank or next section
+          for (let r = i+1; r < dash.length && r < i+10; r++) {
+            const t = clean(dash[r][c]);
+            if (!t) break;
+            if (["risks","leadership","help needed"].some(k => t.toLowerCase().includes(k))) break;
+            noteWins += (noteWins ? "\n" : "") + t;
+          }
+        }
+        if (v.includes("risks")) {
+          for (let r = i+1; r < dash.length && r < i+10; r++) {
+            const t = clean(dash[r][c]);
+            if (!t) break;
+            if (["wins","leadership","help needed"].some(k => t.toLowerCase().includes(k))) break;
+            noteRisks += (noteRisks ? "\n" : "") + t;
+          }
+        }
+        if (v.includes("leadership") || v.includes("help needed")) {
+          for (let r = i+1; r < dash.length && r < i+10; r++) {
+            const t = clean(dash[r][c]);
+            if (!t) break;
+            if (["wins","risks"].some(k => t.toLowerCase().includes(k))) break;
+            noteHelp += (noteHelp ? "\n" : "") + t;
+          }
+        }
+      }
+    }
+  }
+
   return { wdTotal, wdElapsed, month, ratio, tgtMtg, tgtSql, tgtMrr, tgtCmt,
            srcNames: srcNames.length ? srcNames : sources,
-           srcMtg, srcSql, sources, meetings, sqls, commits };
+           srcMtg, srcSql, sources, meetings, sqls, commits,
+           noteWins, noteRisks, noteHelp };
 }
 
 function render(D) {
   const {ratio, wdTotal, wdElapsed, month, tgtMtg, tgtSql, tgtMrr, tgtCmt,
-         srcNames, srcMtg, srcSql, meetings, sqls, commits} = D;
+         srcNames, srcMtg, srcSql, meetings, sqls, commits,
+         noteWins, noteRisks, noteHelp} = D;
 
   document.getElementById("ttl-date").textContent =
     `${month}  |  Day ${wdElapsed} of ${wdTotal} working days`;
@@ -492,6 +533,11 @@ function render(D) {
       <td class="l" style="color:#6B7280;font-size:10px;">${d.bl||""}</td>
     </tr>`;
   }).join("") : `<tr><td colspan="6" style="color:#9CA3AF;padding:10px;">No active commit deals</td></tr>`;
+
+  // Notes
+  document.getElementById("n-wins").textContent  = noteWins  || "";
+  document.getElementById("n-risks").textContent = noteRisks || "";
+  document.getElementById("n-help").textContent  = noteHelp  || "";
 
   // Raw table
   document.getElementById("tb-raw").innerHTML = commits.map((d,i)=>`
