@@ -225,8 +225,16 @@ async function fetchAll() {
 
   } catch(e) {
     console.error(e);
-    bar.className = "status-bar err";
-    bar.innerHTML = `⚠️ Could not fetch data. Make sure the sheet is set to <strong>"Anyone with the link can view"</strong>. Error: ${e.message}`;
+    // If we have previously loaded data, keep showing it
+    if (DATA) {
+      render(DATA);
+      bar.className = "status-bar err";
+      bar.innerHTML = `⚠️ Could not refresh — showing last loaded data. Error: ${e.message}`;
+      setTimeout(() => bar.style.display = "none", 5000);
+    } else {
+      bar.className = "status-bar err";
+      bar.innerHTML = `⚠️ Could not load data. Make sure the sheet is <strong>Published to web</strong> (File → Share → Publish to web). Error: ${e.message}`;
+    }
   }
 
   btn.disabled = false;
