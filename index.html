@@ -218,7 +218,7 @@ async function fetchAll() {
         tgtRows.map((r,i)=>`<div><b>Row${i+1}:</b> ${r.map((c,ci)=>`[${ci}]=${JSON.stringify(c)}`).join(" | ")}</div>`).join("") +
         "<br><b>── DASHBOARD tab ──</b><br>" +
         dashRows.map((r,i)=>`<div><b>Row${i+1}:</b> ${r.map((c,ci)=>`[${ci}]=${JSON.stringify(c)}`).join(" | ")}</div>`).join("") +
-        `<br><b>── NOTES PARSED ──</b><br>WINS: ${JSON.stringify(DATA.noteWins)}<br>RISKS: ${JSON.stringify(DATA.noteRisks)}<br>HELP: ${JSON.stringify(DATA.noteHelp)}`;
+        "";
     }
 
     DATA = parseData(inp, tgt, dash);
