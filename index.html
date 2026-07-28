@@ -90,6 +90,7 @@
 
   <div class="tabs">
     <button class="tab active" onclick="sw('dashboard',this)">📊 Dashboard</button>
+    <button class="tab" onclick="sw('debug',this)" style="font-size:10px;color:#9CA3AF;">🔧 Debug</button>
   </div>
 
   <!-- DASHBOARD -->
@@ -124,7 +125,13 @@
   <!-- RAW DATA (hidden) -->
   <div id="tab-raw" class="tab-content" style="display:none;">
     <tbody id="tb-raw"></tbody>
-    <div id="debug-csv"></div>
+  </div>
+
+  <!-- DEBUG TAB -->
+  <div id="tab-debug" class="tab-content">
+    <div style="padding:12px;background:#fff;border-radius:6px;font-family:monospace;font-size:11px;line-height:1.6;overflow-x:auto;white-space:pre-wrap;max-height:80vh;overflow-y:auto;" id="debug-csv">
+      Click Refresh to load debug output.
+    </div>
   </div>
 
 </div>
@@ -200,17 +207,32 @@ async function fetchAll() {
     // Show debug
     const debugEl = document.getElementById("debug-csv");
     if (debugEl) {
-      const rows = parseCSV(inputCSV).slice(0,20);
-      const tgtRows = parseCSV(targetsCSV).slice(0,20);
-      const dashRows = parseCSV(dashCSV).slice(0,70);
+      const rows = inp.slice(0,25);
+      const tgtRows = tgt.slice(0,25);
+      const dashRows = dash.slice(0,70);
       debugEl.innerHTML =
-        "<b>── INPUT tab ──</b><br>" +
-        rows.map((r,i)=>`<div><b>Row${i+1}:</b> ${r.map((c,ci)=>`[${ci}]=${JSON.stringify(c)}`).join(" | ")}</div>`).join("") +
-        "<br><b>── TARGETS tab ──</b><br>" +
-        tgtRows.map((r,i)=>`<div><b>Row${i+1}:</b> ${r.map((c,ci)=>`[${ci}]=${JSON.stringify(c)}`).join(" | ")}</div>`).join("") +
-        "<br><b>── DASHBOARD tab ──</b><br>" +
-        dashRows.map((r,i)=>`<div><b>Row${i+1}:</b> ${r.map((c,ci)=>`[${ci}]=${JSON.stringify(c)}`).join(" | ")}</div>`).join("") +
+        "<b style='color:#1B2B4B'>── INPUT tab (first 25 rows) ──</b>\n" +
+        rows.map((r,i)=>`<span style='color:#6B7280'>Row${String(i+1).padStart(2)}:</span> ${r.map((c,ci)=>`[${ci}]=${JSON.stringify(c)}`).join(" | ")}`).join("\n") +
+        "\n\n<b style='color:#1B2B4B'>── TARGETS tab (first 25 rows) ──</b>\n" +
+        tgtRows.map((r,i)=>`<span style='color:#6B7280'>Row${String(i+1).padStart(2)}:</span> ${r.map((c,ci)=>`[${ci}]=${JSON.stringify(c)}`).join(" | ")}`).join("\n") +
+        "\n\n<b style='color:#1B2B4B'>── DASHBOARD tab (first 70 rows) ──</b>\n" +
+        dashRows.map((r,i)=>`<span style='color:#6B7280'>Row${String(i+1).padStart(2)}:</span> ${r.map((c,ci)=>`[${ci}]=${JSON.stringify(c)}`).join(" | ")}`).join("\n") +
         "";
+      // Also add parsed values summary
+      const D2 = parseData(inp, tgt, dash);
+      debugEl.innerHTML += `\n\n<b style='color:#057A55'>── PARSED VALUES ──</b>\n` +
+        `Days: ${D2.wdElapsed} / ${D2.wdTotal}  Month: ${D2.month}  Ratio: ${D2.ratio.toFixed(3)}\n` +
+        `tgtMtg: ${D2.tgtMtg}  tgtSql: ${D2.tgtSql}  tgtMrr: ${D2.tgtMrr}  tgtCmt: ${D2.tgtCmt}\n` +
+        `sources: ${JSON.stringify(D2.sources)}\n` +
+        `meetings: ${JSON.stringify(D2.meetings)}\n` +
+        `sqls: ${JSON.stringify(D2.sqls)}\n` +
+        `srcNames: ${JSON.stringify(D2.srcNames)}\n` +
+        `srcMtg: ${JSON.stringify(D2.srcMtg)}\n` +
+        `srcSql: ${JSON.stringify(D2.srcSql)}\n` +
+        `commits (${D2.commits.length}): ${JSON.stringify(D2.commits.slice(0,3))}\n` +
+        `noteWins: ${JSON.stringify(D2.noteWins)}\n` +
+        `noteRisks: ${JSON.stringify(D2.noteRisks)}\n` +
+        `noteHelp: ${JSON.stringify(D2.noteHelp)}\n`;
     }
 
     DATA = parseData(inp, tgt, dash);
