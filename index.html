@@ -441,19 +441,22 @@ function parseData(inp, tgt, dash) {
       if (foundAny && (winsCol >= 0 || risksCol >= 0)) { hdrRow = i; break; }
     }
 
-    // If helpCol not found (merged cell collapsed by gviz), infer it from spacing
-    // WINS=col1, RISKS=col4 → gap=3 → LEADERSHIP=col7
-    if (hdrRow >= 0 && helpCol < 0 && winsCol >= 0 && risksCol >= 0) {
-      const gap = risksCol - winsCol;
-      helpCol = risksCol + gap;
-    }
-
     // Step 2: read content rows below the header
+    // For leadership: scan ALL columns in content rows for any non-empty cell
+    // that isn't in the wins or risks column — that must be leadership content
     if (hdrRow >= 0) {
       for (let r = hdrRow + 1; r < dash.length && r < hdrRow + 15; r++) {
-        if (winsCol  >= 0) { const t = clean(dash[r][winsCol]);  if (t) noteWins  += (noteWins  ? "\n" : "") + t; }
-        if (risksCol >= 0) { const t = clean(dash[r][risksCol]); if (t) noteRisks += (noteRisks ? "\n" : "") + t; }
-        if (helpCol  >= 0) { const t = clean(dash[r][helpCol]);  if (t) noteHelp  += (noteHelp  ? "\n" : "") + t; }
+        const row = dash[r];
+        if (winsCol  >= 0) { const t = clean(row[winsCol]);  if (t) noteWins  += (noteWins  ? "\n" : "") + t; }
+        if (risksCol >= 0) { const t = clean(row[risksCol]); if (t) noteRisks += (noteRisks ? "\n" : "") + t; }
+        // Leadership: find any non-empty cell in this row that's not wins/risks column
+        for (let c = 0; c < row.length; c++) {
+          if (c === winsCol || c === risksCol || c === 0) continue;
+          const t = clean(row[c]);
+          if (t && !t.includes("●") && !t.startsWith("₹")) {
+            noteHelp += (noteHelp ? "\n" : "") + t;
+          }
+        }
       }
     }
   }
