@@ -442,21 +442,15 @@ function parseData(inp, tgt, dash) {
     }
 
     // Step 2: read content rows below the header
-    // For leadership: scan ALL columns in content rows for any non-empty cell
-    // that isn't in the wins or risks column — that must be leadership content
+    // WINS=col1(B), RISKS=col4(E), LEADERSHIP=col7(H) — fixed columns based on sheet layout
     if (hdrRow >= 0) {
+      // If helpCol still not found, hardcode to col 7 (column H in sheet)
+      if (helpCol < 0) helpCol = 7;
       for (let r = hdrRow + 1; r < dash.length && r < hdrRow + 15; r++) {
         const row = dash[r];
         if (winsCol  >= 0) { const t = clean(row[winsCol]);  if (t) noteWins  += (noteWins  ? "\n" : "") + t; }
         if (risksCol >= 0) { const t = clean(row[risksCol]); if (t) noteRisks += (noteRisks ? "\n" : "") + t; }
-        // Leadership: find any non-empty cell in this row that's not wins/risks column
-        for (let c = 0; c < row.length; c++) {
-          if (c === winsCol || c === risksCol || c === 0) continue;
-          const t = clean(row[c]);
-          if (t && !t.includes("●") && !t.startsWith("₹")) {
-            noteHelp += (noteHelp ? "\n" : "") + t;
-          }
-        }
+        if (helpCol  >= 0) { const t = clean(row[helpCol]);  if (t) noteHelp  += (noteHelp  ? "\n" : "") + t; }
       }
     }
   }
