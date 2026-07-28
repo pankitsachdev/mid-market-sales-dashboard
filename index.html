@@ -133,10 +133,9 @@
 const SHEET_ID = "1Ft-ODwDjVURXrt5C2U7zzoApRLgmOC7u2M7oFQDNDrk";
 const STGS = ["Commercial Discussion","Agreement Sent","Agreement Signed","Invoice Raised","Handed to Onboarding"];
 
-// Fetch a sheet tab as CSV using the gviz endpoint (works for public sheets)
-// Cache-bust with timestamp so every fetch gets fresh data from Google Sheets
+// Fetch a sheet tab as CSV using the export endpoint
 function sheetURL(tabName) {
-  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}&cachebust=${Date.now()}`;
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&sheet=${encodeURIComponent(tabName)}&cachebust=${Date.now()}`;
 }
 
 // Simple CSV parser (handles quoted fields)
