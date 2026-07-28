@@ -90,7 +90,6 @@
 
   <div class="tabs">
     <button class="tab active" onclick="sw('dashboard',this)">📊 Dashboard</button>
-    <button class="tab" onclick="sw('raw',this)">📋 Raw Data</button>
   </div>
 
   <!-- DASHBOARD -->
@@ -122,16 +121,10 @@
     <div class="last-updated" id="last-updated"></div>
   </div>
 
-  <!-- RAW DATA -->
-  <div id="tab-raw" class="tab-content">
-    <p style="font-size:11px;color:#4B5563;margin:10px 0 14px;">This is the raw data fetched from your Google Sheet. Update numbers there and click <strong>↻ Refresh</strong>.</p>
-    <div class="sec-hdr">COMMIT TRACKER (from Input tab)</div>
-    <div style="overflow-x:auto;">
-      <table><thead><tr><th class="l">Account</th><th>Owner</th><th>MRR (₹)</th><th>Business</th><th>Stage</th><th>Confidence</th><th>Close Date</th><th class="l">Blocker</th></tr></thead>
-      <tbody id="tb-raw"></tbody></table>
-    </div>
-    <div class="sec-hdr" style="margin-top:16px;">DEBUG — Raw Input CSV (first 20 rows)</div>
-    <div style="overflow-x:auto;background:#fff;border:1px solid #e5e7eb;padding:8px;font-size:10px;font-family:monospace;" id="debug-csv"></div>
+  <!-- RAW DATA (hidden) -->
+  <div id="tab-raw" class="tab-content" style="display:none;">
+    <tbody id="tb-raw"></tbody>
+    <div id="debug-csv"></div>
   </div>
 
 </div>
