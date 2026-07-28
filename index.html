@@ -548,14 +548,6 @@ function render(D) {
   document.getElementById("n-risks").textContent = noteRisks || "";
   document.getElementById("n-help").textContent  = noteHelp  || "";
 
-  // Raw table
-  document.getElementById("tb-raw").innerHTML = commits.map((d,i)=>`
-    <tr style="${i%2?"background:#F9FAFB":""}">
-      <td class="l">${d.a}</td><td>${d.o}</td><td>${INR(d.m)}</td>
-      <td>${d.b}</td><td>${d.s}</td>
-      <td class="${d.c==="High"?"ch":d.c==="Stretch"?"cs":"ccl"}">${d.c}</td>
-      <td>${d.d}</td><td class="l" style="font-size:10px;color:#6B7280;">${d.bl||""}</td>
-    </tr>`).join("");
 }
 
 function sw(name,btn){
