@@ -450,7 +450,13 @@ function parseData(inp, tgt, dash) {
         const row = dash[r];
         if (winsCol  >= 0) { const t = clean(row[winsCol]);  if (t) noteWins  += (noteWins  ? "\n" : "") + t; }
         if (risksCol >= 0) { const t = clean(row[risksCol]); if (t) noteRisks += (noteRisks ? "\n" : "") + t; }
-        if (helpCol  >= 0) { const t = clean(row[helpCol]);  if (t) noteHelp  += (noteHelp  ? "\n" : "") + t; }
+        // Leadership merged across H,I,J (cols 7,8,9) — check all three
+      for (const hc of [7, 8, 9]) {
+        const t = clean(row[hc]);
+        if (t && !t.includes("●") && !t.startsWith("₹")) {
+          noteHelp += (noteHelp ? "\n" : "") + t; break;
+        }
+      }
       }
     }
   }
