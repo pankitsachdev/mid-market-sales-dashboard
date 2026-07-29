@@ -634,7 +634,7 @@ function render(D) {
   const top=[...topH,...topS];
   document.getElementById("tb-top").innerHTML = top.length
     ? top.map(d=>`<div class="deal-row">
-        <div><div class="deal-acct">${d.a}</div><div class="deal-owner">${d.o}</div></div>
+        <div><div class="deal-acct">${d.a}</div></div>
         <div style="font-size:11px;color:var(--dim)">${d.o}</div>
         <div class="deal-mrr">${INR(d.m)}</div>
         <div class="deal-stage">${d.s}</div>
