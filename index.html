@@ -5,154 +5,324 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mid-Market Sales Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  :root { color-scheme: light; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Calibri, Arial, sans-serif; background: #F7F8FA; color: #111827; font-size: 13px; }
-  .page { max-width: 1300px; margin: 0 auto; padding: 16px; }
+:root {
+  --bg:      #0B0F1A;
+  --surface: #141927;
+  --border:  #1E2940;
+  --amber:   #F0B429;
+  --green:   #10B981;
+  --red:     #EF4444;
+  --blue:    #3B82F6;
+  --text:    #E2E8F0;
+  --muted:   #64748B;
+  --dim:     #94A3B8;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; font-size: 13px; }
 
-  .title-bar { background: #1B2B4B; color: #fff; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; height: 52px; border-radius: 6px 6px 0 0; gap: 8px; }
-  .title-bar h1 { font-size: 15px; font-weight: 700; letter-spacing: .5px; }
-  .title-right { display: flex; align-items: center; gap: 10px; }
-  .subtitle { font-size: 11px; color: #8FA3C8; font-style: italic; }
-  .refresh-btn { background: #3B5BDB; color: #fff; border: none; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; }
-  .refresh-btn:hover { background: #2D4170; }
-  .refresh-btn:disabled { background: #6B7280; cursor: default; }
+.page { max-width: 1320px; margin: 0 auto; padding: 20px 20px 40px; }
 
-  /* Loading / error */
-  .status-bar { background: #EEF2FF; border: 1px solid #C7D2FE; border-radius: 6px; padding: 10px 14px; margin: 12px 0; font-size: 12px; color: #2D4170; display: flex; align-items: center; gap: 8px; }
-  .status-bar.err { background: #FEE2E2; border-color: #FECACA; color: #991B1B; }
-  .status-bar.ok  { background: #D1FAE5; border-color: #6EE7B7; color: #057A55; }
-  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #C7D2FE; border-top-color: #3B5BDB; border-radius: 50%; animation: spin .7s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+/* ── Status bar ── */
+.status-bar {
+  border-radius: 8px; padding: 9px 14px; margin-bottom: 12px;
+  font-size: 11px; display: flex; align-items: center; gap: 8px;
+  background: rgba(59,130,246,.1); border: 1px solid rgba(59,130,246,.25); color: #93C5FD;
+}
+.status-bar.ok  { background: rgba(16,185,129,.1); border-color: rgba(16,185,129,.25); color: #6EE7B7; }
+.status-bar.err { background: rgba(239,68,68,.1);  border-color: rgba(239,68,68,.25);  color: #FCA5A5; }
+.spinner { display:inline-block; width:12px; height:12px; border:2px solid rgba(147,197,253,.3); border-top-color:#93C5FD; border-radius:50%; animation:spin .7s linear infinite; flex-shrink:0; }
+@keyframes spin { to { transform:rotate(360deg); } }
 
-  .tabs { display: flex; gap: 2px; background: #e5e7eb; padding: 6px 0 0; border-bottom: 2px solid #1B2B4B; }
-  .tab { padding: 7px 20px; cursor: pointer; font-size: 12px; font-weight: 600; border-radius: 4px 4px 0 0; color: #4B5563; background: #e5e7eb; border: none; }
-  .tab.active { background: #fff; color: #1B2B4B; border-bottom: 2px solid #fff; margin-bottom: -2px; }
-  .tab-content { display: none; padding: 16px 0; }
-  .tab-content.active { display: block; }
-  .sec-hdr { background: #1B2B4B; color: #fff; font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 4px 4px 0 0; }
+/* ── Header ── */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 22px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 10px;
+  margin-bottom: 14px; gap: 20px;
+}
+.header-left { display: flex; align-items: baseline; gap: 10px; flex-shrink: 0; }
+.header-title {
+  font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--amber);
+}
+.header-sub { font-size: 11px; color: var(--muted); }
 
-  .kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 16px; }
-  .kpi-card { background: #fff; border-radius: 6px; padding: 14px 16px 10px; border-top: 4px solid #3B5BDB; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
-  .kpi-label { font-size: 9px; font-weight: 700; color: #4B5563; letter-spacing: .6px; text-transform: uppercase; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
-  .kpi-value { font-size: 26px; font-weight: 700; color: #111827; line-height: 1.1; }
-  .kpi-sub { display: flex; gap: 16px; margin-top: 6px; font-size: 10px; }
-  .kpi-sub .exp { color: #3B5BDB; font-weight: 700; }
-  .kpi-sub .tgt { color: #6B7280; }
-  .tl { font-size: 20px; line-height: 1; }
-  .gc { color: #057A55; } .ac { color: #92400E; } .rc { color: #991B1B; }
+.month-track { flex: 1; max-width: 420px; }
+.month-track-label {
+  display: flex; justify-content: space-between;
+  font-size: 10px; color: var(--muted); margin-bottom: 5px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.month-track-bar { height: 6px; background: var(--border); border-radius: 99px; position: relative; overflow: visible; }
+.month-track-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg,#F0B429,#FBBF24); box-shadow: 0 0 10px rgba(240,180,41,.4); transition: width .6s ease; }
+.month-track-tick { position: absolute; top: -4px; width: 2px; height: 14px; background: #fff; border-radius: 2px; transform: translateX(-50%); box-shadow: 0 0 6px rgba(255,255,255,.6); }
 
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-  .full-col { margin-bottom: 16px; }
+.refresh-btn {
+  background: transparent; color: var(--amber); border: 1px solid var(--amber);
+  padding: 7px 16px; border-radius: 6px; font-size: 11px; font-weight: 700;
+  font-family: 'JetBrains Mono', monospace; cursor: pointer; letter-spacing: .08em;
+  transition: background .15s; flex-shrink: 0;
+}
+.refresh-btn:hover { background: rgba(240,180,41,.1); }
+.refresh-btn:disabled { opacity: .4; cursor: default; }
 
-  table { width: 100%; border-collapse: collapse; background: #fff; }
-  th { background: #F3F4F6; color: #4B5563; font-size: 10px; font-weight: 700; text-align: center; padding: 5px 8px; border-bottom: 1px solid #E5E7EB; }
-  th.l { text-align: left; }
-  td { font-size: 11px; padding: 5px 8px; border-bottom: 1px solid #F3F4F6; text-align: center; vertical-align: middle; }
-  td.l { text-align: left; }
-  tr:nth-child(even) td { background: #F9FAFB; }
-  tr.tot td { background: #1B2B4B !important; color: #fff !important; font-weight: 700; }
-  .vp { color: #057A55; background: #D1FAE5 !important; font-weight: 600; }
-  .vn { color: #991B1B; background: #FEE2E2 !important; font-weight: 600; }
-  .r-total { background: #1B2B4B !important; color: #fff !important; font-weight: 700; }
-  .r-mm  { background: #1B2B4B !important; color: #fff !important; }
-  .r-ent { background: #2D4170 !important; color: #fff !important; }
-  .r-high { background: #D1FAE5 !important; }
-  .r-str  { background: #F3F4F6 !important; }
-  .r-tgt  { background: #EEF2FF !important; }
-  .r-fnl-c { background: #D1FAE5 !important; color: #057A55 !important; font-weight: 700; }
-  .ch { color: #057A55; font-weight: 600; } .cs { color: #92400E; } .ccl { color: #9CA3AF; font-style: italic; }
+/* ── KPI Grid ── */
+.kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 14px; }
+.kpi-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 16px 18px 14px; position: relative; overflow: hidden;
+}
+.kpi-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--amber); }
+.kpi-card.behind::before { background: var(--red); }
+.kpi-card.ahead::before  { background: var(--green); }
 
-  .notes-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; margin-bottom: 16px; }
-  .notes-hdr { font-size:10px; font-weight:700; padding:7px 10px; }
-  .nh-w { background:#D1FAE5; color:#057A55; } .nh-r { background:#FEF3C7; color:#92400E; } .nh-h { background:#FEE2E2; color:#991B1B; }
-  .notes-body { background:#fff; border:1px solid #E5E7EB; border-top:none; min-height:60px; padding:8px; font-size:11px; color:#374151; }
+.kpi-label {
+  font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;
+}
+.kpi-status-behind { color: var(--red); }
+.kpi-status-ahead  { color: var(--green); }
+.kpi-value {
+  font-family: 'JetBrains Mono', monospace; font-size: 30px; font-weight: 700;
+  color: var(--text); line-height: 1; margin-bottom: 14px;
+}
+.kpi-value .cur { font-size: 16px; color: var(--muted); }
 
-  /* Last updated */
-  .last-updated { font-size:10px; color:#9CA3AF; text-align:right; padding: 6px 0 0; }
+.pace-labels { display:flex; justify-content:space-between; font-size:9px; color:var(--muted); margin-bottom:4px; font-family:'JetBrains Mono',monospace; }
+.pace-bar { height:5px; background:var(--border); border-radius:99px; position:relative; }
+.pace-actual { height:100%; border-radius:99px; transition: width .5s ease; }
+.pace-actual.behind { background:var(--red);   box-shadow:0 0 8px rgba(239,68,68,.35); }
+.pace-actual.ahead  { background:var(--green); box-shadow:0 0 8px rgba(16,185,129,.35); }
+.pace-tick { position:absolute; top:-3px; width:2px; height:11px; background:var(--amber); border-radius:1px; box-shadow:0 0 5px rgba(240,180,41,.6); transition: left .5s ease; }
+.pace-legend { display:flex; gap:10px; margin-top:5px; font-size:9px; color:var(--muted); font-family:'JetBrains Mono',monospace; }
+.pace-legend span { display:flex; align-items:center; gap:4px; }
+.dot { width:6px; height:6px; border-radius:99px; display:inline-block; }
+
+/* ── Cards / Tables ── */
+.two-col  { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+.full-col { margin-bottom:12px; }
+
+.card { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.card-hdr {
+  background:#0f1624; border-bottom:1px solid var(--border);
+  padding:8px 14px; font-size:9px; font-weight:700; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--amber); font-family:'JetBrains Mono',monospace;
+  display:flex; align-items:center; gap:8px;
+}
+.card-hdr .pill { background:rgba(240,180,41,.12); color:var(--amber); font-size:8px; padding:1px 7px; border-radius:99px; }
+
+table { width:100%; border-collapse:collapse; }
+thead th {
+  padding:7px 12px; font-size:9px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.08em; color:var(--muted); text-align:right; border-bottom:1px solid var(--border);
+}
+thead th:first-child { text-align:left; }
+tbody td {
+  padding:7px 12px; font-size:11px; text-align:right;
+  border-bottom:1px solid rgba(30,41,64,.6);
+  font-family:'JetBrains Mono',monospace; color:var(--dim);
+}
+tbody td:first-child { text-align:left; font-family:'Inter',sans-serif; color:var(--text); font-size:12px; }
+tbody tr:last-child td { border-bottom:none; }
+tbody tr:hover td { background:rgba(255,255,255,.02); }
+.row-total td { background:rgba(240,180,41,.06)!important; color:var(--amber)!important; font-weight:700; border-top:1px solid rgba(240,180,41,.2); }
+.vp { color:var(--green)!important; }
+.vn { color:var(--red)!important; }
+
+/* Funnel */
+.funnel-row { display:flex; align-items:center; padding:8px 14px; gap:12px; border-bottom:1px solid rgba(30,41,64,.6); }
+.funnel-row:last-child { border-bottom:none; }
+.funnel-stage { flex:1; font-size:11px; color:var(--dim); }
+.funnel-count { font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:700; color:var(--text); min-width:28px; text-align:right; }
+.funnel-bar-wrap { flex:2; height:4px; background:var(--border); border-radius:99px; }
+.funnel-bar { height:100%; border-radius:99px; transition:width .5s ease; }
+.f-cd { background:var(--muted); }
+.f-as { background:var(--blue); }
+.f-ag { background:var(--amber); }
+.f-ir { background:#A855F7; }
+.f-oo { background:var(--green); box-shadow:0 0 8px rgba(16,185,129,.4); }
+.funnel-row.won .funnel-stage { color:var(--green); font-weight:600; }
+.funnel-row.won .funnel-count { color:var(--green); }
+
+/* MRR rows */
+.mrr-row { display:flex; justify-content:space-between; align-items:center; padding:8px 14px; border-bottom:1px solid rgba(30,41,64,.6); }
+.mrr-row:last-child { border-bottom:none; }
+.mrr-label { font-size:11px; color:var(--dim); }
+.mrr-val { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; color:var(--dim); }
+.mrr-row.r-total .mrr-label { color:var(--text); font-weight:700; font-size:12px; }
+.mrr-row.r-total .mrr-val   { color:var(--amber); font-size:14px; }
+.mrr-row.r-mm  .mrr-val { color:var(--blue); }
+.mrr-row.r-ent .mrr-val { color:#A855F7; }
+.mrr-row.r-hi  .mrr-val { color:var(--green); }
+.mrr-row.r-str .mrr-val { color:var(--blue); }
+.mrr-row.r-tgt .mrr-val { color:var(--muted); }
+
+/* Top deals */
+.deal-row { display:grid; grid-template-columns:2fr 1fr 1.2fr 1.5fr auto; align-items:center; padding:9px 14px; border-bottom:1px solid rgba(30,41,64,.6); gap:12px; }
+.deal-row:last-child { border-bottom:none; }
+.deal-row:hover { background:rgba(255,255,255,.02); }
+.deal-hdr-row { background:#0f1624; border-bottom:1px solid var(--border)!important; }
+.deal-hdr-row > div { font-size:9px; color:var(--muted); font-family:'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.08em; }
+.deal-acct { font-size:12px; font-weight:600; color:var(--text); }
+.deal-owner { font-size:10px; color:var(--muted); }
+.deal-mrr { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; color:var(--amber); }
+.deal-stage { font-size:10px; color:var(--dim); }
+.deal-conf { font-size:9px; font-weight:700; letter-spacing:.08em; padding:2px 8px; border-radius:99px; text-transform:uppercase; white-space:nowrap; }
+.conf-high    { background:rgba(16,185,129,.15); color:var(--green); }
+.conf-stretch { background:rgba(59,130,246,.15);  color:var(--blue); }
+
+/* Notes */
+.notes-outer { border-radius:10px; overflow:hidden; border:1px solid var(--border); margin-bottom:14px; }
+.notes-grid { display:grid; grid-template-columns:1fr 1fr 1fr; }
+.notes-card { background:var(--surface); }
+.notes-card + .notes-card { border-left:1px solid var(--border); }
+.notes-hdr { padding:8px 14px; font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; font-family:'JetBrains Mono',monospace; border-bottom:1px solid var(--border); }
+.nh-w { color:var(--green); } .nh-r { color:#FBBF24; } .nh-h { color:var(--red); }
+.notes-body { padding:12px 14px; min-height:70px; font-size:11px; color:var(--dim); line-height:1.7; white-space:pre-wrap; }
+
+.last-updated { font-size:10px; color:var(--muted); text-align:right; padding:6px 0; font-family:'JetBrains Mono',monospace; }
 </style>
 </head>
 <body>
 <div class="page">
 
-  <div class="title-bar">
-    <h1>MID-MARKET SALES DASHBOARD</h1>
-    <div class="title-right">
-      <span class="subtitle" id="ttl-date"></span>
-      <button class="refresh-btn" id="refresh-btn" onclick="fetchAll()">↻ Refresh</button>
-    </div>
-  </div>
-
   <div id="status-bar" class="status-bar">
-    <span class="spinner"></span> Loading data from Google Sheets...
+    <span class="spinner"></span> Loading data from Google Sheets…
   </div>
 
-  <div class="tabs">
-    <button class="tab active" onclick="sw('dashboard',this)">📊 Dashboard</button>
-    <button class="tab" onclick="sw('debug',this)" style="font-size:10px;color:#9CA3AF;">🔧 Debug</button>
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <div class="header-title">Mid-Market Sales</div>
+      <div class="header-sub" id="ttl-month">–</div>
+    </div>
+    <div class="month-track">
+      <div class="month-track-label">
+        <span>Day 1</span>
+        <span id="ttl-day" style="color:var(--amber);font-weight:700;">–</span>
+        <span>EOM</span>
+      </div>
+      <div class="month-track-bar">
+        <div class="month-track-fill" id="month-fill" style="width:0%"></div>
+        <div class="month-track-tick" id="month-tick" style="left:0%"></div>
+      </div>
+    </div>
+    <button class="refresh-btn" id="refresh-btn" onclick="fetchAll()">↻ REFRESH</button>
   </div>
 
-  <!-- DASHBOARD -->
-  <div id="tab-dashboard" class="tab-content active">
-    <div class="kpi-grid" style="margin-top:12px;">
-      <div class="kpi-card"><div class="kpi-label">MEETINGS <span class="tl" id="tl0">●</span></div><div class="kpi-value" id="kv0">–</div><div class="kpi-sub"><span class="exp">Exp: <span id="ke0">–</span></span><span class="tgt">Target: <span id="kt0">–</span></span></div></div>
-      <div class="kpi-card"><div class="kpi-label">SQLs <span class="tl" id="tl1">●</span></div><div class="kpi-value" id="kv1">–</div><div class="kpi-sub"><span class="exp">Exp: <span id="ke1">–</span></span><span class="tgt">Target: <span id="kt1">–</span></span></div></div>
-      <div class="kpi-card"><div class="kpi-label">MRR CLOSED <span class="tl" id="tl2">●</span></div><div class="kpi-value" id="kv2">–</div><div class="kpi-sub"><span class="exp">Exp: <span id="ke2">–</span></span><span class="tgt">Target: <span id="kt2">–</span></span></div></div>
-      <div class="kpi-card"><div class="kpi-label">COMMIT (HIGH CONF) <span class="tl" id="tl3">●</span></div><div class="kpi-value" id="kv3">–</div><div class="kpi-sub"><span class="exp">Exp: <span id="ke3">–</span></span><span class="tgt">Target: <span id="kt3">–</span></span></div></div>
+  <!-- KPI CARDS -->
+  <div class="kpi-grid">
+    <div class="kpi-card" id="kpi0">
+      <div class="kpi-label">Meetings <span id="ks0"></span></div>
+      <div class="kpi-value" id="kv0">–</div>
+      <div class="pace-labels"><span>Actual</span><span id="kpl0" style="color:var(--amber)">–</span><span id="kpt0">–</span></div>
+      <div class="pace-bar"><div class="pace-actual" id="kpa0" style="width:0%"></div><div class="pace-tick" id="kpk0" style="left:0%"></div></div>
+      <div class="pace-legend">
+        <span><span class="dot" id="kpd0"></span>Actual</span>
+        <span><span class="dot" style="background:var(--amber)"></span>Expected</span>
+        <span><span class="dot" style="background:var(--border)"></span>Target</span>
+      </div>
     </div>
-    <div class="two-col">
-      <div><div class="sec-hdr">MEETINGS BY SOURCE</div><table><thead><tr><th class="l">Source</th><th>Actual</th><th>Expected</th><th>Variance</th></tr></thead><tbody id="tb-mtg"></tbody></table></div>
-      <div><div class="sec-hdr">SQLs BY SOURCE</div><table><thead><tr><th class="l">Source</th><th>Actual</th><th>Expected</th><th>Variance</th></tr></thead><tbody id="tb-sql"></tbody></table></div>
+    <div class="kpi-card" id="kpi1">
+      <div class="kpi-label">SQLs <span id="ks1"></span></div>
+      <div class="kpi-value" id="kv1">–</div>
+      <div class="pace-labels"><span>Actual</span><span id="kpl1" style="color:var(--amber)">–</span><span id="kpt1">–</span></div>
+      <div class="pace-bar"><div class="pace-actual" id="kpa1" style="width:0%"></div><div class="pace-tick" id="kpk1" style="left:0%"></div></div>
+      <div class="pace-legend">
+        <span><span class="dot" id="kpd1"></span>Actual</span>
+        <span><span class="dot" style="background:var(--amber)"></span>Expected</span>
+        <span><span class="dot" style="background:var(--border)"></span>Target</span>
+      </div>
     </div>
-    <div class="two-col">
-      <div><div class="sec-hdr">MRR &amp; REVENUE</div><table><thead><tr><th class="l">Metric</th><th>Value (₹)</th></tr></thead><tbody id="tb-mrr"></tbody></table></div>
-      <div><div class="sec-hdr">DEAL FUNNEL</div><table><thead><tr><th class="l">Stage</th><th># Deals</th></tr></thead><tbody id="tb-fnl"></tbody></table><div style="font-size:9px;color:#9CA3AF;font-style:italic;text-align:center;padding:6px;">Enterprise closes at Agreement Signed · MM closes at Onboarding</div></div>
+    <div class="kpi-card" id="kpi2">
+      <div class="kpi-label">MRR Closed <span id="ks2"></span></div>
+      <div class="kpi-value" id="kv2">–</div>
+      <div class="pace-labels"><span>Actual</span><span id="kpl2" style="color:var(--amber)">–</span><span id="kpt2">–</span></div>
+      <div class="pace-bar"><div class="pace-actual" id="kpa2" style="width:0%"></div><div class="pace-tick" id="kpk2" style="left:0%"></div></div>
+      <div class="pace-legend">
+        <span><span class="dot" id="kpd2"></span>Actual</span>
+        <span><span class="dot" style="background:var(--amber)"></span>Expected</span>
+        <span><span class="dot" style="background:var(--border)"></span>Target</span>
+      </div>
     </div>
-    <div class="full-col">
-      <div class="sec-hdr">TOP DEALS IN COMMIT &nbsp;<span style="background:#EEF2FF;color:#2D4170;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;">High conf first, sorted by MRR</span></div>
-      <table><thead><tr><th class="l">Account</th><th>Owner</th><th>MRR (₹)</th><th>Stage</th><th>Confidence</th><th class="l">Blocker</th></tr></thead><tbody id="tb-top"></tbody></table>
+    <div class="kpi-card" id="kpi3">
+      <div class="kpi-label">Commit (High Conf) <span id="ks3"></span></div>
+      <div class="kpi-value" id="kv3">–</div>
+      <div class="pace-labels"><span>Actual</span><span id="kpl3" style="color:var(--amber)">–</span><span id="kpt3">–</span></div>
+      <div class="pace-bar"><div class="pace-actual" id="kpa3" style="width:0%"></div><div class="pace-tick" id="kpk3" style="left:0%"></div></div>
+      <div class="pace-legend">
+        <span><span class="dot" id="kpd3"></span>Actual</span>
+        <span><span class="dot" style="background:var(--amber)"></span>Expected</span>
+        <span><span class="dot" style="background:var(--border)"></span>Target</span>
+      </div>
     </div>
-    <div class="sec-hdr" style="border-radius:4px 4px 0 0;">NOTES FOR TODAY</div>
+  </div>
+
+  <!-- SOURCE TABLES -->
+  <div class="two-col">
+    <div class="card">
+      <div class="card-hdr">Meetings by Source</div>
+      <table><thead><tr><th>Source</th><th>Actual</th><th>Expected</th><th>Variance</th></tr></thead>
+      <tbody id="tb-mtg"></tbody></table>
+    </div>
+    <div class="card">
+      <div class="card-hdr">SQLs by Source</div>
+      <table><thead><tr><th>Source</th><th>Actual</th><th>Expected</th><th>Variance</th></tr></thead>
+      <tbody id="tb-sql"></tbody></table>
+    </div>
+  </div>
+
+  <!-- MRR + FUNNEL -->
+  <div class="two-col">
+    <div class="card">
+      <div class="card-hdr">MRR &amp; Revenue</div>
+      <div id="mrr-rows"></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr">Deal Funnel</div>
+      <div id="funnel-rows"></div>
+    </div>
+  </div>
+
+  <!-- TOP DEALS -->
+  <div class="card full-col">
+    <div class="card-hdr">Top Deals in Commit <span class="pill">High conf first · sorted by MRR</span></div>
+    <div class="deal-row deal-hdr-row">
+      <div>Account</div><div>Owner</div><div>MRR</div><div>Stage</div><div>Conf.</div>
+    </div>
+    <div id="tb-top"></div>
+  </div>
+
+  <!-- NOTES -->
+  <div class="notes-outer">
     <div class="notes-grid">
-      <div><div class="notes-hdr nh-w">🏆 WINS</div><div class="notes-body" id="n-wins"></div></div>
-      <div><div class="notes-hdr nh-r">⚠️ RISKS</div><div class="notes-body" id="n-risks"></div></div>
-      <div><div class="notes-hdr nh-h">🙋 LEADERSHIP HELP NEEDED</div><div class="notes-body" id="n-help"></div></div>
-    </div>
-    <div class="last-updated" id="last-updated"></div>
-  </div>
-
-  <!-- RAW DATA (hidden) -->
-  <div id="tab-raw" class="tab-content" style="display:none;">
-    <tbody id="tb-raw"></tbody>
-  </div>
-
-  <!-- DEBUG TAB -->
-  <div id="tab-debug" class="tab-content">
-    <div style="padding:12px;background:#fff;border-radius:6px;font-family:monospace;font-size:11px;line-height:1.6;overflow-x:auto;white-space:pre-wrap;max-height:80vh;overflow-y:auto;" id="debug-csv">
-      Click Refresh to load debug output.
+      <div class="notes-card"><div class="notes-hdr nh-w">🏆 Wins</div><div class="notes-body" id="n-wins"></div></div>
+      <div class="notes-card"><div class="notes-hdr nh-r">⚠️ Risks</div><div class="notes-body" id="n-risks"></div></div>
+      <div class="notes-card"><div class="notes-hdr nh-h">🙋 Leadership Help</div><div class="notes-body" id="n-help"></div></div>
     </div>
   </div>
 
-</div>
+  <div class="last-updated" id="last-updated"></div>
+
+</div><!-- /page -->
 
 <script>
 const SHEET_ID = "1Ft-ODwDjVURXrt5C2U7zzoApRLgmOC7u2M7oFQDNDrk";
 const STGS = ["Commercial Discussion","Agreement Sent","Agreement Signed","Invoice Raised","Handed to Onboarding"];
 
-// Fetch a sheet tab as CSV using the gviz endpoint
-function sheetURL(tabName) {
-  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}&t=${Date.now()}`;
+function sheetURL(tab) {
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}&t=${Date.now()}`;
 }
 
-// Simple CSV parser (handles quoted fields)
 function parseCSV(text) {
   const rows = [];
-  const lines = text.split(/\r?\n/);
-  for (const line of lines) {
+  for (const line of text.split(/\r?\n/)) {
     if (!line.trim()) continue;
-    const cols = [];
-    let cur = "", inQ = false;
+    const cols = []; let cur = "", inQ = false;
     for (let i = 0; i < line.length; i++) {
       const ch = line[i];
       if (ch === '"') { inQ = !inQ; }
@@ -165,13 +335,17 @@ function parseCSV(text) {
   return rows;
 }
 
-function n(v) { const x = parseFloat((v||"").replace(/[₹,\s]/g,"")); return isNaN(x) ? 0 : x; }
+function n(v)  { const x = parseFloat((v||"").replace(/[₹,\s]/g,"")); return isNaN(x)?0:x; }
+function cl(v) { return (v||"").replace(/^"|"$/g,"").trim(); }
 const INR = v => "₹" + Number(v).toLocaleString("en-IN");
 const NUM = v => Number(v).toLocaleString("en-IN");
-function tl(a, e) {
-  if (a >= e) return {s:"●", c:"gc"};
-  if (a >= e * 0.8) return {s:"◑", c:"ac"};
-  return {s:"●", c:"rc"};
+
+function findRow(rows, text) {
+  const t = text.toLowerCase();
+  for (let i=0;i<rows.length;i++)
+    for (let c=0;c<rows[i].length;c++)
+      if (cl(rows[i][c]).toLowerCase().includes(t)) return {row:i,col:c};
+  return null;
 }
 
 let DATA = null;
@@ -180,413 +354,300 @@ async function fetchAll() {
   const btn = document.getElementById("refresh-btn");
   const bar = document.getElementById("status-bar");
   btn.disabled = true;
-  btn.textContent = "↻ Loading...";
   bar.className = "status-bar";
-  bar.innerHTML = '<span class="spinner"></span> Fetching from Google Sheets...';
+  bar.innerHTML = '<span class="spinner"></span> Fetching from Google Sheets…';
+  bar.style.display = "flex";
 
   try {
     const [inputCSV, targetsCSV, dashCSV] = await Promise.all([
-      fetch(sheetURL("Input"), {cache: "no-store"}).then(r => { if(!r.ok) throw new Error("Input tab fetch failed"); return r.text(); }),
-      fetch(sheetURL("Targets"), {cache: "no-store"}).then(r => { if(!r.ok) throw new Error("Targets tab fetch failed"); return r.text(); }),
-      // Try multiple possible tab name spellings
-      (async () => {
-        for (const name of ["Dashboard","dashboard","DASHBOARD","Sheet1","Sheet3"]) {
-          try {
-            const r = await fetch(sheetURL(name), {cache: "no-store"});
-            if (r.ok) { const t = await r.text(); if (t && t.length > 10) return t; }
-          } catch(e) {}
+      fetch(sheetURL("Input"),   {cache:"no-store"}).then(r=>{ if(!r.ok) throw new Error("Input fetch failed"); return r.text(); }),
+      fetch(sheetURL("Targets"), {cache:"no-store"}).then(r=>{ if(!r.ok) throw new Error("Targets fetch failed"); return r.text(); }),
+      (async()=>{
+        for (const nm of ["Dashboard","dashboard","DASHBOARD","Sheet1","Sheet3"]) {
+          try { const r=await fetch(sheetURL(nm),{cache:"no-store"}); if(r.ok){const t=await r.text();if(t&&t.length>10)return t;} } catch(e){}
         }
         return "";
       })(),
     ]);
 
-    const inp = parseCSV(inputCSV);
-    const tgt = parseCSV(targetsCSV);
+    const inp  = parseCSV(inputCSV);
+    const tgt  = parseCSV(targetsCSV);
     const dash = parseCSV(dashCSV);
-
-    // Show debug
-    const debugEl = document.getElementById("debug-csv");
-    if (debugEl) {
-      const rows = inp.slice(0,25);
-      const tgtRows = tgt.slice(0,25);
-      const dashRows = dash.slice(0,70);
-      debugEl.innerHTML =
-        "<b style='color:#1B2B4B'>── INPUT tab (first 25 rows) ──</b>\n" +
-        rows.map((r,i)=>`<span style='color:#6B7280'>Row${String(i+1).padStart(2)}:</span> ${r.map((c,ci)=>`[${ci}]=${JSON.stringify(c)}`).join(" | ")}`).join("\n") +
-        "\n\n<b style='color:#1B2B4B'>── TARGETS tab (first 25 rows) ──</b>\n" +
-        tgtRows.map((r,i)=>`<span style='color:#6B7280'>Row${String(i+1).padStart(2)}:</span> ${r.map((c,ci)=>`[${ci}]=${JSON.stringify(c)}`).join(" | ")}`).join("\n") +
-        "\n\n<b style='color:#1B2B4B'>── DASHBOARD tab (first 70 rows) ──</b>\n" +
-        dashRows.map((r,i)=>`<span style='color:#6B7280'>Row${String(i+1).padStart(2)}:</span> ${r.map((c,ci)=>`[${ci}]=${JSON.stringify(c)}`).join(" | ")}`).join("\n") +
-        "";
-      // Also add parsed values summary
-      const D2 = parseData(inp, tgt, dash);
-      debugEl.innerHTML += `\n\n<b style='color:#057A55'>── PARSED VALUES ──</b>\n` +
-        `Days: ${D2.wdElapsed} / ${D2.wdTotal}  Month: ${D2.month}  Ratio: ${D2.ratio.toFixed(3)}\n` +
-        `tgtMtg: ${D2.tgtMtg}  tgtSql: ${D2.tgtSql}  tgtMrr: ${D2.tgtMrr}  tgtCmt: ${D2.tgtCmt}\n` +
-        `sources: ${JSON.stringify(D2.sources)}\n` +
-        `meetings: ${JSON.stringify(D2.meetings)}\n` +
-        `sqls: ${JSON.stringify(D2.sqls)}\n` +
-        `srcNames: ${JSON.stringify(D2.srcNames)}\n` +
-        `srcMtg: ${JSON.stringify(D2.srcMtg)}\n` +
-        `srcSql: ${JSON.stringify(D2.srcSql)}\n` +
-        `commits (${D2.commits.length}): ${JSON.stringify(D2.commits.slice(0,3))}\n` +
-        `noteWins: ${JSON.stringify(D2.noteWins)}\n` +
-        `noteRisks: ${JSON.stringify(D2.noteRisks)}\n` +
-        `noteHelp: ${JSON.stringify(D2.noteHelp)}\n`;
-    }
 
     DATA = parseData(inp, tgt, dash);
     render(DATA);
 
-    const now = new Date().toLocaleTimeString("en-IN", {hour:"2-digit", minute:"2-digit"});
-    document.getElementById("last-updated").textContent = `Last updated: ${now}`;
     bar.className = "status-bar ok";
-    bar.innerHTML = `✓ Data loaded successfully from Google Sheets`;
-    setTimeout(() => bar.style.display = "none", 3000);
+    bar.innerHTML = "✓ Data loaded from Google Sheets";
+    setTimeout(()=>bar.style.display="none", 3000);
+    document.getElementById("last-updated").textContent =
+      "Last updated: " + new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
 
   } catch(e) {
     console.error(e);
-    // If we have previously loaded data, keep showing it
-    if (DATA) {
-      render(DATA);
-      bar.className = "status-bar err";
-      bar.innerHTML = `⚠️ Could not refresh — showing last loaded data. Error: ${e.message}`;
-      setTimeout(() => bar.style.display = "none", 5000);
-    } else {
-      bar.className = "status-bar err";
-      bar.innerHTML = `⚠️ Could not load data. Make sure the sheet is <strong>Published to web</strong> (File → Share → Publish to web). Error: ${e.message}`;
-    }
+    if (DATA) { render(DATA); }
+    bar.className = "status-bar err";
+    bar.innerHTML = `⚠️ ${DATA?"Could not refresh — showing last data.":"Could not load."} ${e.message}`;
+    if (DATA) setTimeout(()=>bar.style.display="none", 5000);
   }
-
   btn.disabled = false;
-  btn.textContent = "↻ Refresh";
-}
-
-function clean(v) { return (v||"").replace(/^"|"$/g,"").trim(); }
-
-function findRow(rows, colText) {
-  // find first row where ANY column matches text (case-insensitive, partial)
-  const t = colText.toLowerCase();
-  for (let i = 0; i < rows.length; i++) {
-    for (let c = 0; c < rows[i].length; c++) {
-      if (clean(rows[i][c]).toLowerCase().includes(t)) return {row:i, col:c};
-    }
-  }
-  return null;
 }
 
 function parseData(inp, tgt, dash) {
-  // ── Targets tab ──
-  // Find "Days in Month" header row, data is next row
-  let wdHdrInfo = findRow(tgt, "days in month");
-  const wdRow = wdHdrInfo ? (tgt[wdHdrInfo.row+1] || []) : [];
-  const wdCol = wdHdrInfo ? wdHdrInfo.col : 0;
+  // ── Targets ──
+  const wdInfo = findRow(tgt,"days in month");
+  const wdRow  = wdInfo ? (tgt[wdInfo.row+1]||[]) : [];
+  const wdCol  = wdInfo ? wdInfo.col : 0;
   const wdTotal   = n(wdRow[wdCol])   || 31;
   const wdElapsed = n(wdRow[wdCol+1]) || 0;
-  const month     = clean(wdRow[wdCol+2]) || "–";
-  const ratio = wdTotal > 0 ? wdElapsed / wdTotal : 0;
+  const month     = cl(wdRow[wdCol+2]) || "–";
+  const ratio = wdTotal>0 ? wdElapsed/wdTotal : 0;
 
-  // Find overall targets: look for "Total Meetings" header OR a row with 4 consecutive numbers
-  // that look like meetings/sqls/mrr/commit (meetings is typically 50-200, mrr > 10000)
-  let tgtMtg=0, tgtSql=0, tgtMrr=0, tgtCmt=0;
-  let tgtHdrInfo = findRow(tgt, "total meetings");
-  if (tgtHdrInfo) {
-    const tgtRow = tgt[tgtHdrInfo.row+1] || [];
-    const tgtCol = tgtHdrInfo.col;
-    tgtMtg = n(tgtRow[tgtCol]);
-    tgtSql = n(tgtRow[tgtCol+1]);
-    tgtMrr = n(tgtRow[tgtCol+2]);
-    tgtCmt = n(tgtRow[tgtCol+3]);
+  let tgtMtg=0,tgtSql=0,tgtMrr=0,tgtCmt=0;
+  const tHdr = findRow(tgt,"total meetings");
+  if (tHdr) {
+    const r=tgt[tHdr.row+1]||[], c=tHdr.col;
+    tgtMtg=n(r[c]); tgtSql=n(r[c+1]); tgtMrr=n(r[c+2]); tgtCmt=n(r[c+3]);
   }
-  // Fallback: find "Total Meetings" header even if merged — look for row containing "meetings" + numeric row below
   if (!tgtMtg) {
-    for (let i = 0; i < tgt.length-1; i++) {
-      const r = tgt[i];
-      for (let c = 0; c < r.length; c++) {
-        if (clean(r[c]).toLowerCase().includes("meetings") && clean(r[c+1]||"").toLowerCase().includes("sql")) {
-          const nxt = tgt[i+1] || [];
-          const v0 = n(nxt[c]), v1 = n(nxt[c+1]), v2 = n(nxt[c+2]), v3 = n(nxt[c+3]);
-          if (v0 > 0) { tgtMtg=v0; tgtSql=v1; tgtMrr=v2; tgtCmt=v3; break; }
+    for (let i=0;i<tgt.length-1;i++) {
+      const r=tgt[i];
+      for (let c=0;c<r.length;c++) {
+        if (cl(r[c]).toLowerCase().includes("meetings") && cl(r[c+1]||"").toLowerCase().includes("sql")) {
+          const nx=tgt[i+1]||[], v0=n(nx[c]);
+          if(v0>0){tgtMtg=v0;tgtSql=n(nx[c+1]);tgtMrr=n(nx[c+2]);tgtCmt=n(nx[c+3]);break;}
         }
       }
-      if (tgtMtg) break;
+      if(tgtMtg) break;
     }
   }
-  // Second fallback: search for a row that has a number in range 50-500 (meetings) followed by sqls
   if (!tgtMtg) {
-    for (let i = 0; i < tgt.length; i++) {
-      const r = tgt[i];
-      for (let c = 0; c < r.length; c++) {
-        const v = n(r[c]);
-        if (v >= 50 && v <= 500 && n(r[c+1]) > 0 && n(r[c+2]) > 10000) {
-          tgtMtg=v; tgtSql=n(r[c+1]); tgtMrr=n(r[c+2]); tgtCmt=n(r[c+3])||tgtMrr; break;
-        }
+    for (let i=0;i<tgt.length;i++) {
+      const r=tgt[i];
+      for (let c=0;c<r.length;c++) {
+        const v=n(r[c]);
+        if(v>=50&&v<=500&&n(r[c+1])>0&&n(r[c+2])>10000){tgtMtg=v;tgtSql=n(r[c+1]);tgtMrr=n(r[c+2]);tgtCmt=n(r[c+3])||tgtMrr;break;}
       }
-      if (tgtMtg) break;
+      if(tgtMtg) break;
     }
   }
 
-  // Find per-source targets: search for row where col[0] === "Inbound" (first source name)
-  // This is robust against merged-cell headers in gviz output
-  const srcNames = [], srcMtg = [], srcSql = [];
-  const KNOWN_SOURCES = ["Inbound","Outbound","Referral","Partnership","AE Outreach","Martech Partnership"];
-  let srcTgtStart = -1, srcTgtCol = -1, srcMtgCol = -1, srcSqlCol = -1;
-
-  // Find the row where "Inbound" appears — that's the first data row
-  for (let i = 0; i < tgt.length; i++) {
-    for (let c = 0; c < tgt[i].length; c++) {
-      if (clean(tgt[i][c]).toLowerCase() === "inbound") {
-        srcTgtStart = i;
-        srcTgtCol   = c;
-        // Look at the header row above to figure out meeting/sql column positions
-        const hdr = tgt[i-1] || [];
-        srcMtgCol = -1; srcSqlCol = -1;
-        for (let hc = c+1; hc < hdr.length; hc++) {
-          const h = clean(hdr[hc]).toLowerCase();
-          if (srcMtgCol < 0 && (h.includes("meeting") || h === "mtg" || h === "count")) srcMtgCol = hc;
-          else if (srcMtgCol >= 0 && srcSqlCol < 0 && (h.includes("sql") || h.includes("qual") || h === "count")) srcSqlCol = hc;
+  // Per-source targets
+  const srcNames=[],srcMtg=[],srcSql=[];
+  let srcStart=-1,srcCol=-1,srcMC=-1,srcSC=-1;
+  for (let i=0;i<tgt.length;i++) {
+    for (let c=0;c<tgt[i].length;c++) {
+      if (cl(tgt[i][c]).toLowerCase()==="inbound") {
+        srcStart=i; srcCol=c;
+        const hdr=tgt[i-1]||[];
+        for (let hc=c+1;hc<hdr.length;hc++) {
+          const h=cl(hdr[hc]).toLowerCase();
+          if(srcMC<0&&(h.includes("meeting")||h==="mtg"||h==="count")) srcMC=hc;
+          else if(srcMC>=0&&srcSC<0&&(h.includes("sql")||h==="count")) srcSC=hc;
         }
-        // Fallback: assume meetings = col+1, sqls = col+2
-        if (srcMtgCol < 0) srcMtgCol = c + 1;
-        if (srcSqlCol < 0) srcSqlCol = c + 2;
+        if(srcMC<0) srcMC=c+1;
+        if(srcSC<0) srcSC=c+2;
         break;
       }
     }
-    if (srcTgtStart >= 0) break;
+    if(srcStart>=0) break;
   }
-
-  if (srcTgtStart >= 0) {
-    for (let i = srcTgtStart; i < tgt.length; i++) {
-      const r = tgt[i];
-      const nm = clean(r[srcTgtCol]);
-      if (!nm || nm.toUpperCase() === "TOTAL") break;
-      if (STGS.includes(nm) || ["High","Stretch","Mid Market","Enterprise"].includes(nm)) break;
-      srcNames.push(nm);
-      srcMtg.push(n(r[srcMtgCol]));
-      srcSql.push(n(r[srcSqlCol]));
+  if (srcStart>=0) {
+    for (let i=srcStart;i<tgt.length;i++) {
+      const r=tgt[i], nm=cl(r[srcCol]);
+      if(!nm||nm.toUpperCase()==="TOTAL") break;
+      if(STGS.includes(nm)||["High","Stretch","Mid Market","Enterprise"].includes(nm)) break;
+      srcNames.push(nm); srcMtg.push(n(r[srcMC])); srcSql.push(n(r[srcSC]));
     }
   }
 
-  // ── Input tab ──
-  // From debug: Row1 is merged header, Row2-7 are source data (col0=name, col1=mtg, col3=name, col4=sql)
-  // Row8 is TOTAL. Find start by looking for first row where col[1] is "Count" OR
-  // where col[0] is a non-empty non-header name followed by a numeric col[1].
-  // Most robust: find the row just before TOTAL that has source data.
-  // Strategy: find "TOTAL" row in col[0], then read backwards until blank or header.
-
-  // Find header row: row where col[1].toLowerCase()==="count"
-  let mtgHdr = -1;
-  for (let i = 0; i < inp.length; i++) {
-    const r = inp[i];
-    // col[1]=Count and col[4]=Count signals the meetings+sqls header
-    if (clean(r[1]).toLowerCase() === "count" && clean(r[4]).toLowerCase() === "count") {
-      mtgHdr = i; break;
-    }
-    // Also detect merged header: col[0] ends with "Source" and col[1]="Count"
-    if (clean(r[1]).toLowerCase() === "count" && clean(r[0]).toLowerCase().includes("source")) {
-      mtgHdr = i; break;
+  // ── Input ──
+  let mtgHdr=-1;
+  for (let i=0;i<inp.length;i++) {
+    const r=inp[i];
+    if(cl(r[1]).toLowerCase()==="count"&&cl(r[4]).toLowerCase()==="count"){mtgHdr=i;break;}
+    if(cl(r[1]).toLowerCase()==="count"&&cl(r[0]).toLowerCase().includes("source")){mtgHdr=i;break;}
+  }
+  if(mtgHdr<0) {
+    for (let i=0;i<inp.length;i++) {
+      if(cl(inp[i][0]).toUpperCase()==="TOTAL"&&n(inp[i][1])>0){mtgHdr=Math.max(0,i-7);break;}
     }
   }
-  // If not found by count, find by TOTAL row and work back
-  if (mtgHdr < 0) {
-    for (let i = 0; i < inp.length; i++) {
-      if (clean(inp[i][0]).toUpperCase() === "TOTAL" && n(inp[i][1]) > 0) {
-        mtgHdr = i - 7; // 6 sources above total
-        if (mtgHdr < 0) mtgHdr = 0;
-        break;
+
+  const meetings=[],sqls=[],sources=[];
+  if(mtgHdr>=0) {
+    for (let i=mtgHdr+1;i<inp.length;i++) {
+      const r=inp[i], nm=cl(r[0]);
+      if(!nm||nm.toUpperCase()==="TOTAL") break;
+      if(nm.toLowerCase().includes("commit tracker")||nm.toLowerCase()==="account") break;
+      sources.push(nm); meetings.push(n(r[1])); sqls.push(n(r[4]));
+    }
+  }
+
+  let cmtStart=-1;
+  for (let i=0;i<inp.length;i++) {
+    if(cl(inp[i][0]).toLowerCase()==="account"&&cl(inp[i][1]).toLowerCase()==="owner"){cmtStart=i+1;break;}
+  }
+  const commits=[];
+  if(cmtStart>=0) {
+    for (let i=cmtStart;i<inp.length;i++) {
+      const r=inp[i], acct=cl(r[0]);
+      if(!acct||acct.toLowerCase()==="account") continue;
+      commits.push({a:acct,o:cl(r[1]),m:n(r[2]),b:cl(r[3]),s:cl(r[4]),c:cl(r[5]),bl:cl(r[7])});
+    }
+  }
+
+  // ── Dashboard notes ──
+  let noteWins="",noteRisks="",noteHelp="";
+  if(dash&&dash.length) {
+    let winsCol=-1,risksCol=-1,helpCol=-1,hdrRow=-1;
+    for (let i=0;i<dash.length;i++) {
+      let found=false;
+      for (let c=0;c<dash[i].length;c++) {
+        const v=cl(dash[i][c]).toLowerCase();
+        if(v.includes("wins")){winsCol=c;found=true;}
+        if(v.includes("risk")){risksCol=c;found=true;}
+        if(v.includes("leadership")||v.includes("help")){helpCol=c;found=true;}
       }
+      if(found&&(winsCol>=0||risksCol>=0)){hdrRow=i;break;}
     }
-  }
-
-  const meetings = [], sqls = [], sources = [];
-  if (mtgHdr >= 0) {
-    for (let i = mtgHdr+1; i < inp.length; i++) {
-      const r = inp[i];
-      const nm = clean(r[0]);
-      if (!nm) break;
-      if (nm.toUpperCase() === "TOTAL") break;
-      if (nm.toLowerCase().includes("commit tracker")) break;
-      if (nm.toLowerCase() === "account") break;
-      sources.push(nm);
-      meetings.push(n(r[1]));
-      sqls.push(n(r[4]));   // SQLs are always col[4] based on debug
-    }
-  }
-
-  // Commit tracker: find "Account" header row
-  let cmtStart = -1;
-  for (let i = 0; i < inp.length; i++) {
-    const r = inp[i];
-    if (clean(r[0]).toLowerCase() === "account" && clean(r[1]).toLowerCase() === "owner") {
-      cmtStart = i + 1; break;
-    }
-  }
-
-  const commits = [];
-  if (cmtStart >= 0) {
-    for (let i = cmtStart; i < inp.length; i++) {
-      const r = inp[i];
-      const acct = clean(r[0]);
-      if (!acct) continue;
-      // skip if looks like a header repeat
-      if (acct.toLowerCase() === "account") continue;
-      commits.push({
-        a:  acct,
-        o:  clean(r[1]),
-        m:  n(r[2]),
-        b:  clean(r[3]),
-        s:  clean(r[4]),
-        c:  clean(r[5]),
-        d:  clean(r[6]),
-        bl: clean(r[7]),
-        nt: clean(r[8]),
-      });
-    }
-  }
-
-  // ── Dashboard tab — Notes ──
-  // Structure: "NOTES FOR TODAY" header row, then a row with WINS | RISKS | LEADERSHIP columns,
-  // then content rows below each column
-  let noteWins = "", noteRisks = "", noteHelp = "";
-  if (dash && dash.length) {
-    // Step 1: find the row with WINS / RISKS headers
-    // Note: gviz collapses merged cells — LEADERSHIP header may show as blank
-    let winsCol = -1, risksCol = -1, helpCol = -1, hdrRow = -1;
-    for (let i = 0; i < dash.length; i++) {
-      let foundAny = false;
-      for (let c = 0; c < dash[i].length; c++) {
-        const v = clean(dash[i][c]).toLowerCase();
-        if (v.includes("wins"))                             { winsCol  = c; foundAny = true; }
-        if (v.includes("risk"))                             { risksCol = c; foundAny = true; }
-        if (v.includes("leadership") || v.includes("help")) { helpCol  = c; foundAny = true; }
-      }
-      if (foundAny && (winsCol >= 0 || risksCol >= 0)) { hdrRow = i; break; }
-    }
-
-    // Step 2: read content rows below the header
-    // WINS=col1(B), RISKS=col4(E), LEADERSHIP=col7(H) — fixed columns based on sheet layout
-    if (hdrRow >= 0) {
-      // If helpCol still not found, hardcode to col 7 (column H in sheet)
-      if (helpCol < 0) helpCol = 7;
-      for (let r = hdrRow + 1; r < dash.length && r < hdrRow + 15; r++) {
-        const row = dash[r];
-        if (winsCol  >= 0) { const t = clean(row[winsCol]);  if (t) noteWins  += (noteWins  ? "\n" : "") + t; }
-        if (risksCol >= 0) { const t = clean(row[risksCol]); if (t) noteRisks += (noteRisks ? "\n" : "") + t; }
-        // Leadership merged across H,I,J (cols 7,8,9) — check all three
-      for (const hc of [7, 8, 9]) {
-        const t = clean(row[hc]);
-        if (t && !t.includes("●") && !t.startsWith("₹")) {
-          noteHelp += (noteHelp ? "\n" : "") + t; break;
+    if(hdrRow>=0) {
+      if(helpCol<0) helpCol=7;
+      for (let r=hdrRow+1;r<dash.length&&r<hdrRow+15;r++) {
+        const row=dash[r];
+        if(winsCol>=0){const t=cl(row[winsCol]);if(t) noteWins+=(noteWins?"\n":"")+t;}
+        if(risksCol>=0){const t=cl(row[risksCol]);if(t) noteRisks+=(noteRisks?"\n":"")+t;}
+        for (const hc of [7,8,9]) {
+          const t=cl(row[hc]);
+          if(t&&!t.includes("●")&&!t.startsWith("₹")){noteHelp+=(noteHelp?"\n":"")+t;break;}
         }
       }
-      }
     }
   }
 
-  return { wdTotal, wdElapsed, month, ratio, tgtMtg, tgtSql, tgtMrr, tgtCmt,
-           srcNames: srcNames.length ? srcNames : sources,
-           srcMtg, srcSql, sources, meetings, sqls, commits,
-           noteWins, noteRisks, noteHelp };
+  return {wdTotal,wdElapsed,month,ratio,tgtMtg,tgtSql,tgtMrr,tgtCmt,
+          srcNames:srcNames.length?srcNames:sources,srcMtg,srcSql,
+          sources,meetings,sqls,commits,noteWins,noteRisks,noteHelp};
 }
 
 function render(D) {
-  const {ratio, wdTotal, wdElapsed, month, tgtMtg, tgtSql, tgtMrr, tgtCmt,
-         srcNames, srcMtg, srcSql, meetings, sqls, commits,
-         noteWins, noteRisks, noteHelp} = D;
+  const {ratio,wdTotal,wdElapsed,month,tgtMtg,tgtSql,tgtMrr,tgtCmt,
+         srcNames,srcMtg,srcSql,meetings,sqls,commits,noteWins,noteRisks,noteHelp} = D;
 
-  document.getElementById("ttl-date").textContent =
-    `${month}  |  Day ${wdElapsed} of ${wdTotal} working days`;
+  // Header
+  document.getElementById("ttl-month").textContent = month;
+  document.getElementById("ttl-day").textContent   = `Day ${wdElapsed} of ${wdTotal}`;
+  const pct = (ratio*100).toFixed(1);
+  document.getElementById("month-fill").style.width = pct+"%";
+  document.getElementById("month-tick").style.left  = pct+"%";
 
-  // KPIs
-  const totalMtg = meetings.reduce((s,v)=>s+v, 0);
-  const totalSql = sqls.reduce((s,v)=>s+v, 0);
+  // Totals
+  const totalMtg = meetings.reduce((s,v)=>s+v,0);
+  const totalSql = sqls.reduce((s,v)=>s+v,0);
   const entS = ["Agreement Signed","Invoice Raised","Handed to Onboarding"];
-  let mrrMM=0, mrrENT=0, commitH=0, commitS=0;
-  const funnel = {}; for(const s of STGS) funnel[s]=0;
-
+  let mrrMM=0,mrrENT=0,commitH=0,commitS=0;
+  const funnel={}; for(const s of STGS) funnel[s]=0;
   for(const d of commits) {
-    if(d.s && funnel[d.s]!==undefined) funnel[d.s]++;
-    if(d.b==="Mid Market" && d.s==="Handed to Onboarding") mrrMM += d.m;
-    if(d.b==="Enterprise" && entS.includes(d.s)) mrrENT += d.m;
-    if(d.c==="High") commitH += d.m;
-    if(d.c==="Stretch") commitS += d.m;
+    if(d.s&&funnel[d.s]!==undefined) funnel[d.s]++;
+    if(d.b==="Mid Market"&&d.s==="Handed to Onboarding") mrrMM+=d.m;
+    if(d.b==="Enterprise"&&entS.includes(d.s)) mrrENT+=d.m;
+    if(d.c==="High")    commitH+=d.m;
+    if(d.c==="Stretch") commitS+=d.m;
   }
-  const mrrClosed = mrrMM + mrrENT;
+  const mrrClosed=mrrMM+mrrENT;
 
-  const kpis = [
+  // KPI cards
+  const kpis=[
     {val:totalMtg, exp:Math.round(tgtMtg*ratio), tgt:tgtMtg, money:false},
     {val:totalSql,  exp:Math.round(tgtSql*ratio),  tgt:tgtSql,  money:false},
     {val:mrrClosed, exp:Math.round(tgtMrr*ratio),  tgt:tgtMrr,  money:true},
     {val:commitH,   exp:Math.round(tgtCmt*ratio),  tgt:tgtCmt,  money:true},
   ];
   kpis.forEach((k,i)=>{
-    document.getElementById(`kv${i}`).textContent = k.money ? INR(k.val) : NUM(k.val);
-    document.getElementById(`ke${i}`).textContent = k.money ? INR(k.exp) : NUM(k.exp);
-    document.getElementById(`kt${i}`).textContent = k.money ? INR(k.tgt) : NUM(k.tgt);
-    const {s,c} = tl(k.val, k.exp);
-    const el = document.getElementById(`tl${i}`); el.textContent=s; el.className=`tl ${c}`;
+    const ahead = k.val >= k.exp;
+    const card = document.getElementById(`kpi${i}`);
+    card.className = "kpi-card " + (ahead?"ahead":"behind");
+    document.getElementById(`kv${i}`).innerHTML = k.money
+      ? `<span class="cur">₹</span>${Number(k.val).toLocaleString("en-IN")}`
+      : NUM(k.val);
+    document.getElementById(`ks${i}`).innerHTML = ahead
+      ? `<span class="kpi-status-ahead">▲ on pace</span>`
+      : `<span class="kpi-status-behind">▼ behind</span>`;
+    // Pace bar: actual as % of target, expected tick as % of target
+    const actualPct  = k.tgt>0 ? Math.min(100,(k.val/k.tgt*100)).toFixed(1) : 0;
+    const expPct     = k.tgt>0 ? Math.min(100,(k.exp/k.tgt*100)).toFixed(1) : 0;
+    const pa = document.getElementById(`kpa${i}`);
+    pa.style.width = actualPct+"%";
+    pa.className   = "pace-actual "+(ahead?"ahead":"behind");
+    document.getElementById(`kpk${i}`).style.left = expPct+"%";
+    document.getElementById(`kpd${i}`).style.background = ahead?"var(--green)":"var(--red)";
+    document.getElementById(`kpl${i}`).textContent = k.money
+      ? `│ Exp ${INR(k.exp)}`
+      : `│ Exp ${NUM(k.exp)}`;
+    document.getElementById(`kpt${i}`).textContent = k.money
+      ? `Target ${INR(k.tgt)}`
+      : `Target ${NUM(k.tgt)}`;
   });
 
-  // Source rows — use srcNames if available, else meetings-derived sources
-  const displaySrcs = srcNames.length === meetings.length ? srcNames : D.sources;
+  // Source tables
+  const displaySrcs = srcNames.length===meetings.length ? srcNames : D.sources;
   let mH="",sH="",mTA=0,mTE=0,sTA=0,sTE=0;
   displaySrcs.forEach((src,i)=>{
     const mA=meetings[i]||0, mE=Math.round((srcMtg[i]||0)*ratio);
     const sA=sqls[i]||0,     sE=Math.round((srcSql[i]||0)*ratio);
     const mV=mA-mE, sV=sA-sE;
-    mH+=`<tr><td class="l">${src}</td><td>${mA}</td><td>${mE}</td><td class="${mV>=0?"vp":"vn"}">${mV>=0?"+":""}${mV}</td></tr>`;
-    sH+=`<tr><td class="l">${src}</td><td>${sA}</td><td>${sE}</td><td class="${sV>=0?"vp":"vn"}">${sV>=0?"+":""}${sV}</td></tr>`;
+    mH+=`<tr><td>${src}</td><td>${mA}</td><td>${mE}</td><td class="${mV>=0?"vp":"vn"}">${mV>=0?"+":""}${mV}</td></tr>`;
+    sH+=`<tr><td>${src}</td><td>${sA}</td><td>${sE}</td><td class="${sV>=0?"vp":"vn"}">${sV>=0?"+":""}${sV}</td></tr>`;
     mTA+=mA; mTE+=mE; sTA+=sA; sTE+=sE;
   });
-  mH+=`<tr class="tot"><td class="l">TOTAL</td><td>${mTA}</td><td>${Math.round(mTE)}</td><td>${mTA-Math.round(mTE)>=0?"+":""}${mTA-Math.round(mTE)}</td></tr>`;
-  sH+=`<tr class="tot"><td class="l">TOTAL</td><td>${sTA}</td><td>${Math.round(sTE)}</td><td>${sTA-Math.round(sTE)>=0?"+":""}${sTA-Math.round(sTE)}</td></tr>`;
+  const mTot=Math.round(mTE), sTot=Math.round(sTE);
+  mH+=`<tr class="row-total"><td>TOTAL</td><td>${mTA}</td><td>${mTot}</td><td>${mTA-mTot>=0?"+":""}${mTA-mTot}</td></tr>`;
+  sH+=`<tr class="row-total"><td>TOTAL</td><td>${sTA}</td><td>${sTot}</td><td>${sTA-sTot>=0?"+":""}${sTA-sTot}</td></tr>`;
   document.getElementById("tb-mtg").innerHTML=mH;
   document.getElementById("tb-sql").innerHTML=sH;
 
   // MRR
-  document.getElementById("tb-mrr").innerHTML=`
-    <tr><td class="l r-total" colspan="2"><strong>MRR Closed MTD</strong></td><td class="r-total" style="font-weight:700;font-size:13px;">${INR(mrrClosed)}</td></tr>
-    <tr><td class="l r-mm" colspan="2"><strong>Mid-Market Closed MTD</strong></td><td class="r-mm" style="font-weight:700;">${INR(mrrMM)}</td></tr>
-    <tr><td class="l r-ent" colspan="2"><strong>Enterprise Closed MTD</strong></td><td class="r-ent" style="font-weight:700;">${INR(mrrENT)}</td></tr>
-    <tr><td class="l r-high" colspan="2">High Confidence</td><td class="r-high" style="font-weight:700;">${INR(commitH)}</td></tr>
-    <tr><td class="l r-str" colspan="2">Stretch</td><td class="r-str" style="font-weight:700;">${INR(commitS)}</td></tr>
-    <tr><td class="l r-tgt" colspan="2">Monthly MRR Target</td><td class="r-tgt" style="font-weight:700;">${INR(tgtMrr)}</td></tr>`;
+  document.getElementById("mrr-rows").innerHTML=`
+    <div class="mrr-row r-total"><span class="mrr-label">MRR Closed MTD</span><span class="mrr-val">${INR(mrrClosed)}</span></div>
+    <div class="mrr-row r-mm"><span class="mrr-label">Mid-Market Closed</span><span class="mrr-val">${INR(mrrMM)}</span></div>
+    <div class="mrr-row r-ent"><span class="mrr-label">Enterprise Closed</span><span class="mrr-val">${INR(mrrENT)}</span></div>
+    <div class="mrr-row r-hi"><span class="mrr-label">High Confidence</span><span class="mrr-val">${INR(commitH)}</span></div>
+    <div class="mrr-row r-str"><span class="mrr-label">Stretch</span><span class="mrr-val">${INR(commitS)}</span></div>
+    <div class="mrr-row r-tgt"><span class="mrr-label">Monthly Target</span><span class="mrr-val">${INR(tgtMrr)}</span></div>`;
 
   // Funnel
-  document.getElementById("tb-fnl").innerHTML=STGS.map(s=>{
-    const cl = s==="Handed to Onboarding";
-    return `<tr><td class="l ${cl?"r-fnl-c":""}">${s}${cl?" ✓":""}</td><td class="${cl?"r-fnl-c":""}">${funnel[s]||0}</td></tr>`;
+  const fMax = Math.max(...Object.values(funnel), 1);
+  const fCls = ["f-cd","f-as","f-ag","f-ir","f-oo"];
+  document.getElementById("funnel-rows").innerHTML = STGS.map((s,i)=>{
+    const cnt=funnel[s]||0, won=s==="Handed to Onboarding";
+    const barW=(cnt/fMax*100).toFixed(0);
+    return `<div class="funnel-row${won?" won":""}">
+      <div class="funnel-stage">${s}${won?" ✓":""}</div>
+      <div class="funnel-bar-wrap"><div class="funnel-bar ${fCls[i]}" style="width:${barW}%"></div></div>
+      <div class="funnel-count"${cnt===0?' style="color:var(--muted)"':''}>${cnt}</div>
+    </div>`;
   }).join("");
 
   // Top deals
-  const topH = commits.filter(d=>d.c==="High"&&d.a).sort((a,b)=>b.m-a.m);
-  const topS = commits.filter(d=>d.c==="Stretch"&&d.a).sort((a,b)=>b.m-a.m);
-  const top = [...topH, ...topS];
-  document.getElementById("tb-top").innerHTML = top.length ? top.map((d,i)=>{
-    const cc = d.c==="High"?"ch":d.c==="Stretch"?"cs":"ccl";
-    return `<tr style="${i%2?"background:#F9FAFB":""}">
-      <td class="l">${d.a}</td><td>${d.o}</td>
-      <td style="font-weight:600;">${INR(d.m)}</td>
-      <td>${d.s}</td><td class="${cc}">${d.c}</td>
-      <td class="l" style="color:#6B7280;font-size:10px;">${d.bl||""}</td>
-    </tr>`;
-  }).join("") : `<tr><td colspan="6" style="color:#9CA3AF;padding:10px;">No active commit deals</td></tr>`;
+  const topH=commits.filter(d=>d.c==="High"&&d.a).sort((a,b)=>b.m-a.m);
+  const topS=commits.filter(d=>d.c==="Stretch"&&d.a).sort((a,b)=>b.m-a.m);
+  const top=[...topH,...topS];
+  document.getElementById("tb-top").innerHTML = top.length
+    ? top.map(d=>`<div class="deal-row">
+        <div><div class="deal-acct">${d.a}</div><div class="deal-owner">${d.o}</div></div>
+        <div style="font-size:11px;color:var(--dim)">${d.o}</div>
+        <div class="deal-mrr">${INR(d.m)}</div>
+        <div class="deal-stage">${d.s}</div>
+        <div><span class="deal-conf ${d.c==="High"?"conf-high":"conf-stretch"}">${d.c}</span></div>
+      </div>`).join("")
+    : `<div style="padding:14px;color:var(--muted);font-size:11px;">No active commit deals</div>`;
 
   // Notes
-  document.getElementById("n-wins").textContent  = noteWins  || "";
-  document.getElementById("n-risks").textContent = noteRisks || "";
-  document.getElementById("n-help").textContent  = noteHelp  || "";
-
+  document.getElementById("n-wins").textContent  = noteWins  || "–";
+  document.getElementById("n-risks").textContent = noteRisks || "–";
+  document.getElementById("n-help").textContent  = noteHelp  || "–";
 }
 
-function sw(name,btn){
-  document.querySelectorAll(".tab-content").forEach(e=>e.classList.remove("active"));
-  document.querySelectorAll(".tab").forEach(e=>e.classList.remove("active"));
-  document.getElementById("tab-"+name).classList.add("active");
-  btn.classList.add("active");
-}
-
-// Auto-fetch on load
 fetchAll();
 </script>
 </body>
